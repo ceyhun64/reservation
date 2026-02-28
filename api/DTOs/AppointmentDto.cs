@@ -1,8 +1,43 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace api.DTOs;
 
-public class AppointmentDto
-{
-    public DateTime StartTime { get; set; }
-    public int ServiceId { get; set; }
-    public string? Notes { get; set; }
-}
+public record AppointmentCreateDto(
+    [Required] int ProviderId,
+    [Required] int ServiceId,
+    [Required] int TimeSlotId,
+    string? CustomerNotes
+);
+
+public record AppointmentUpdateStatusDto(
+    [Required] string Action,   // confirm | reject | complete | noshow
+    string? Reason
+);
+
+public record AppointmentFilterDto(
+    string? Status,
+    DateTime? From,
+    DateTime? To,
+    int Page = 1,
+    int PageSize = 10
+);
+
+public record AppointmentResponseDto(
+    int Id,
+    int CustomerId,
+    string CustomerName,
+    int ProviderId,
+    string ProviderName,
+    int ServiceId,
+    string ServiceName,
+    string CategoryName,
+    DateTime StartTime,
+    DateTime EndTime,
+    decimal PricePaid,
+    string Status,
+    string? CustomerNotes,
+    string? ProviderNotes,
+    string? CancellationReason,
+    bool HasReview,
+    DateTime CreatedAt
+);

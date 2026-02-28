@@ -1,7 +1,8 @@
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using api.Common;
 using api.Data;
 using api.DTOs;
 using api.Models;
@@ -9,87 +10,121 @@ using api.Models;
 namespace api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
-[Authorize]
+[Route("api/businesses")]
 public class BusinessController : ControllerBase
 {
     private readonly AppDbContext _db;
-
     public BusinessController(AppDbContext db) => _db = db;
 
-    // GET api/business
+    /// <summary>Tüm işletmeleri listele (filtrelenebilir)</summary>
     [HttpGet]
-    [AllowAnonymous]
-    public async Task<IActionResult> GetAll() =>
-        Ok(await _db.Businesses.Include(b => b.Services).ToListAsync());
-
-    // GET api/business/1
-    [HttpGet("{id}")]
-    [AllowAnonymous]
-    public async Task<IActionResult> GetById(int id)
+    public async Task<ActionResult<ApiResponse<PagedResponse<BusinessResponseDto>>>> GetAll(
+        [FromQuery] string? city,
+        [FromQuery] string? keyword,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
     {
-        var business = await _db.Businesses
-            .Include(b => b.Services)
-            .FirstOrDefaultAsync(b => b.Id == id);
+        var query = _db.Businesses
+            .Include(b => b.Owner)
+            .Where(b => b.IsActive)
+            .AsQueryable();
 
-        return business is null ? NotFound("İşletme bulunamadı.") : Ok(business);
+        if (!string.IsNullOrWhiteSpace(city))
+            query = query.Where(b => b.City.ToLower().Contains(city.ToLower()));
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+            query = query.Where(b => b.Name.ToLower().Contains(keyword.ToLower()) ||
+                                     b.Description.ToLower().Contains(keyword.ToLower()));
+
+        var total = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(b => ToDto(b))
+            .ToListAsync();
+
+        return Ok(ApiResponse<PagedResponse<BusinessResponseDto>>.Ok(new PagedResponse<BusinessResponseDto>
+        {
+            Items = items,
+            TotalCount = total,
+            Page = page,
+            PageSize = pageSize
+        }));
     }
 
-    // POST api/business
+    /// <summary>İşletme detayı</summary>
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ApiResponse<BusinessResponseDto>>> GetById(int id)
+    {
+        var b = await _db.Businesses.Include(b => b.Owner).FirstOrDefaultAsync(b => b.Id == id);
+        if (b is null) return NotFound(ApiResponse<BusinessResponseDto>.Fail("İşletme bulunamadı."));
+        return Ok(ApiResponse<BusinessResponseDto>.Ok(ToDto(b)));
+    }
+
+    /// <summary>Yeni işletme oluştur</summary>
     [HttpPost]
     [Authorize(Roles = "BusinessOwner,Admin")]
-    public async Task<IActionResult> Create(BusinessDto dto)
+    public async Task<ActionResult<ApiResponse<BusinessResponseDto>>> Create(BusinessDto dto)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-        var business = new Business
+        var userId = GetUserId();
+        var b = new Business
         {
             Name = dto.Name,
             Description = dto.Description,
             Address = dto.Address,
+            City = dto.City,
             Phone = dto.Phone,
+            Email = dto.Email,
+            Website = dto.Website,
             OwnerId = userId
         };
 
-        _db.Businesses.Add(business);
+        _db.Businesses.Add(b);
         await _db.SaveChangesAsync();
+        await _db.Entry(b).Reference(x => x.Owner).LoadAsync();
 
-        return CreatedAtAction(nameof(GetById), new { id = business.Id }, business);
+        return CreatedAtAction(nameof(GetById), new { id = b.Id },
+            ApiResponse<BusinessResponseDto>.Ok(ToDto(b), "İşletme oluşturuldu."));
     }
 
-    // PUT api/business/1
+    /// <summary>İşletme güncelle</summary>
     [HttpPut("{id}")]
     [Authorize(Roles = "BusinessOwner,Admin")]
-    public async Task<IActionResult> Update(int id, BusinessDto dto)
+    public async Task<ActionResult<ApiResponse<BusinessResponseDto>>> Update(int id, BusinessDto dto)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var business = await _db.Businesses.FindAsync(id);
+        var userId = GetUserId();
+        var b = await _db.Businesses.Include(b => b.Owner).FirstOrDefaultAsync(b => b.Id == id);
 
-        if (business is null) return NotFound("İşletme bulunamadı.");
-        if (business.OwnerId != userId) return Forbid();
+        if (b is null) return NotFound(ApiResponse<BusinessResponseDto>.Fail("İşletme bulunamadı."));
+        if (b.OwnerId != userId && !User.IsInRole("Admin")) return Forbid();
 
-        business.Name = dto.Name;
-        business.Description = dto.Description;
-        business.Address = dto.Address;
-        business.Phone = dto.Phone;
+        b.Name = dto.Name; b.Description = dto.Description; b.Address = dto.Address;
+        b.City = dto.City; b.Phone = dto.Phone; b.Email = dto.Email; b.Website = dto.Website;
 
         await _db.SaveChangesAsync();
-        return Ok(business);
+        return Ok(ApiResponse<BusinessResponseDto>.Ok(ToDto(b)));
     }
 
-    // DELETE api/business/1
+    /// <summary>İşletme sil</summary>
     [HttpDelete("{id}")]
     [Authorize(Roles = "BusinessOwner,Admin")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var business = await _db.Businesses.FindAsync(id);
+        var userId = GetUserId();
+        var b = await _db.Businesses.FindAsync(id);
 
-        if (business is null) return NotFound("İşletme bulunamadı.");
-        if (business.OwnerId != userId) return Forbid();
+        if (b is null) return NotFound(ApiResponse<object>.Fail("İşletme bulunamadı."));
+        if (b.OwnerId != userId && !User.IsInRole("Admin")) return Forbid();
 
-        _db.Businesses.Remove(business);
+        b.IsActive = false;
         await _db.SaveChangesAsync();
-        return NoContent();
+        return Ok(ApiResponse<object>.Ok(null, "İşletme kaldırıldı."));
     }
+
+    private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+    private static BusinessResponseDto ToDto(Business b) =>
+        new(b.Id, b.Name, b.Description, b.Address, b.City,
+            b.Phone, b.Email, b.Website, b.LogoUrl, b.IsVerified,
+            b.OwnerId, b.Owner?.FullName ?? "");
 }
