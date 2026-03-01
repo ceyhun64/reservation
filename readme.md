@@ -7,7 +7,7 @@ Her sektöre uygun, çok kullanıcılı evrensel randevu yönetim sistemi.
 ## Mimari Özeti
 
 ```
-User (Customer / Provider / BusinessOwner / Admin)
+User (Receiver / Provider / BusinessOwner / Admin)
   │
   ├─▶ Business (İşletme: Klinik, Kuaför, Spor Salonu...)
   │     └─▶ Service (Hizmet: Saç Kesimi, Diş Muayenesi...)
@@ -18,9 +18,9 @@ User (Customer / Provider / BusinessOwner / Admin)
   │     ├─▶ TimeSlot (Müsait zaman dilimleri)
   │     └─▶ Review (Aldığı değerlendirmeler)
   │
-  └─▶ Appointment (Randevu: Customer + Provider + Service + TimeSlot)
+  └─▶ Appointment (Randevu: Receiver + Provider + Service + TimeSlot)
         ├─▶ Durum: Pending → Confirmed → Completed
-        │                └→ Rejected / CancelledByCustomer / NoShow
+        │                └→ Rejected / CancelledByReceiver / NoShow
         └─▶ Review (Tamamlanan randevuya 1 yorum)
 ```
 
@@ -57,7 +57,7 @@ dotnet run
 
 | Rol             | Yetki                                      |
 | --------------- | ------------------------------------------ |
-| `Customer`      | Randevu al, iptal et, değerlendirme yaz    |
+| `Receiver`      | Randevu al, iptal et, değerlendirme yaz    |
 | `Provider`      | Slot oluştur, randevuları yönet, cevap ver |
 | `BusinessOwner` | İşletme + hizmet yönetimi, provider ekleme |
 | `Admin`         | Her şey + moderasyon                       |
@@ -162,7 +162,7 @@ dotnet run
 5. Provider profil    → POST /api/providers (businessId opsiyonel)
 6. Hizmet bağla       → POST /api/providers/{id}/services
 7. Slot oluştur       → POST /api/timeslots/provider/{id}/bulk
-8. Müşteri kayıt      → POST /api/auth/register (Role: Customer)
+8. Müşteri kayıt      → POST /api/auth/register (Role: Receiver)
 9. Provider ara       → GET  /api/providers?categoryId=10&city=Istanbul
 10. Slot bak          → GET  /api/timeslots/provider/{id}?date=2025-06-15
 11. Randevu al        → POST /api/appointments

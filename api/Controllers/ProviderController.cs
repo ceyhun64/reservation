@@ -83,7 +83,7 @@ public class ProviderController : ControllerBase
 
     /// <summary>Provider profili oluştur (kullanıcı kendisi için)</summary>
     [HttpPost]
-    [Authorize(Roles = "Provider,BusinessOwner,Admin")]
+    [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<ProviderResponseDto>>> Create(ProviderDto dto)
     {
         var userId = GetUserId();
@@ -118,7 +118,7 @@ public class ProviderController : ControllerBase
 
     /// <summary>Provider profilini güncelle</summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = "Provider,BusinessOwner,Admin")]
+    [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<ProviderResponseDto>>> Update(int id, ProviderDto dto)
     {
         var userId = GetUserId();
@@ -137,7 +137,7 @@ public class ProviderController : ControllerBase
 
     /// <summary>Provider'a hizmet ekle</summary>
     [HttpPost("{id}/services")]
-    [Authorize(Roles = "Provider,BusinessOwner,Admin")]
+    [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<object>>> AddService(int id,
         [FromBody] AddProviderServiceDto dto)
     {

@@ -53,7 +53,7 @@ public class ReviewController : ControllerBase
             .FirstOrDefaultAsync(a => a.Id == dto.AppointmentId);
 
         if (appt is null) return NotFound(ApiResponse<ReviewResponseDto>.Fail("Randevu bulunamadı."));
-        if (appt.CustomerId != userId) return Forbid();
+        if (appt.ReceiverId != userId) return Forbid();
         if (appt.Status != AppointmentStatus.Completed)
             return BadRequest(ApiResponse<ReviewResponseDto>.Fail("Sadece tamamlanan randevular değerlendirilebilir."));
         if (appt.Review is not null)
@@ -84,7 +84,7 @@ public class ReviewController : ControllerBase
 
     /// <summary>Provider cevap yazar</summary>
     [HttpPatch("{id}/reply")]
-    [Authorize(Roles = "Provider,BusinessOwner,Admin")]
+    [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<ReviewResponseDto>>> Reply(int id, ReviewReplyDto dto)
     {
         var userId = GetUserId();

@@ -12,8 +12,8 @@ using api.Data;
 namespace api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260228084929_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260301134238_RoleUpdate")]
+    partial class RoleUpdate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -48,12 +48,6 @@ namespace api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("ReceiverId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ReceiverNotes")
-                        .HasColumnType("text");
-
                     b.Property<DateTime>("EndTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -64,6 +58,12 @@ namespace api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("ProviderNotes")
+                        .HasColumnType("text");
+
+                    b.Property<int>("ReceiverId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ReceiverNotes")
                         .HasColumnType("text");
 
                     b.Property<int>("ServiceId")
@@ -80,9 +80,9 @@ namespace api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ReceiverId");
-
                     b.HasIndex("ProviderId");
+
+                    b.HasIndex("ReceiverId");
 
                     b.HasIndex("ServiceId");
 
@@ -682,15 +682,15 @@ namespace api.Migrations
 
             modelBuilder.Entity("api.Models.Appointment", b =>
                 {
-                    b.HasOne("api.Models.User", "Receiver")
-                        .WithMany("Appointments")
-                        .HasForeignKey("ReceiverId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("api.Models.Provider", "Provider")
                         .WithMany("Appointments")
                         .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("api.Models.User", "Receiver")
+                        .WithMany("Appointments")
+                        .HasForeignKey("ReceiverId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -705,9 +705,9 @@ namespace api.Migrations
                         .HasForeignKey("api.Models.Appointment", "TimeSlotId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.Navigation("Receiver");
-
                     b.Navigation("Provider");
+
+                    b.Navigation("Receiver");
 
                     b.Navigation("Service");
 

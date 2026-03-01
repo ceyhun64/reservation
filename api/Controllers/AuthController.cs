@@ -31,8 +31,8 @@ public class AuthController : ControllerBase
         if (await _db.Users.AnyAsync(u => u.Email == dto.Email))
             return BadRequest(ApiResponse<AuthResponseDto>.Fail("Bu e-posta adresi zaten kayıtlı."));
 
-        var validRoles = new[] { "Customer", "Provider", "BusinessOwner" };
-        if (!validRoles.Contains(dto.Role))
+        var validRoles = new[] { "Receiver", "Provider", "Admin" };
+         if (!validRoles.Contains(dto.Role))
             return BadRequest(ApiResponse<AuthResponseDto>.Fail("Geçersiz rol."));
 
         var user = new User

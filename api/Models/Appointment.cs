@@ -5,8 +5,8 @@ public class Appointment
     public int Id { get; set; }
 
     // Randevu ALAN (müşteri)
-    public int CustomerId { get; set; }
-    public User Customer { get; set; } = null!;
+    public int ReceiverId { get; set; }
+    public User Receiver { get; set; } = null!;
 
     // Randevu VEREN (uzman/provider)
     public int ProviderId { get; set; }
@@ -22,13 +22,13 @@ public class Appointment
     public decimal PricePaid { get; set; }
 
     // Durum makinesi: Pending → Confirmed → Completed
-    //                          └→ CancelledByCustomer
+    //                          └→ CancelledByReceiver
     //                          └→ CancelledByProvider
     //                          └→ NoShow
     //                          └→ Rejected
     public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
 
-    public string? CustomerNotes { get; set; }      // Müşteri notu
+    public string? ReceiverNotes { get; set; }      // Müşteri notu
     public string? ProviderNotes { get; set; }      // Provider notu (interne)
     public string? CancellationReason { get; set; }
 
@@ -50,7 +50,7 @@ public enum AppointmentStatus
     Pending,                // Bekliyor (onay bekleniyor)
     Confirmed,              // Onaylandı
     Completed,              // Tamamlandı
-    CancelledByCustomer,    // Müşteri iptal etti
+    CancelledByReceiver,    // Müşteri iptal etti
     CancelledByProvider,    // Provider iptal etti
     Rejected,               // Provider reddetti
     NoShow                  // Müşteri gelmedi

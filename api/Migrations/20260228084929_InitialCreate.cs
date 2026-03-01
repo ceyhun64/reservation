@@ -242,14 +242,14 @@ namespace api.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    CustomerId = table.Column<int>(type: "integer", nullable: false),
+                    ReceiverId = table.Column<int>(type: "integer", nullable: false),
                     ProviderId = table.Column<int>(type: "integer", nullable: false),
                     ServiceId = table.Column<int>(type: "integer", nullable: false),
                     StartTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     EndTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     PricePaid = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
-                    CustomerNotes = table.Column<string>(type: "text", nullable: true),
+                    ReceiverNotes = table.Column<string>(type: "text", nullable: true),
                     ProviderNotes = table.Column<string>(type: "text", nullable: true),
                     CancellationReason = table.Column<string>(type: "text", nullable: true),
                     TimeSlotId = table.Column<int>(type: "integer", nullable: true),
@@ -280,8 +280,8 @@ namespace api.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_Appointments_Users_CustomerId",
-                        column: x => x.CustomerId,
+                        name: "FK_Appointments_Users_ReceiverId",
+                        column: x => x.ReceiverId,
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
@@ -352,9 +352,9 @@ namespace api.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Appointments_CustomerId",
+                name: "IX_Appointments_ReceiverId",
                 table: "Appointments",
-                column: "CustomerId");
+                column: "ReceiverId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Appointments_ProviderId",

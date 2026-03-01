@@ -91,11 +91,11 @@ public class AppDbContext : DbContext
         m.Entity<Appointment>()
             .Property(a => a.PricePaid).HasColumnType("decimal(18,2)");
 
-        // Customer → Appointments
+        // Receiver → Appointments
         m.Entity<Appointment>()
-            .HasOne(a => a.Customer)
+            .HasOne(a => a.Receiver)
             .WithMany(u => u.Appointments)
-            .HasForeignKey(a => a.CustomerId)
+            .HasForeignKey(a => a.ReceiverId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Provider → Appointments

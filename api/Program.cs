@@ -112,14 +112,33 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ── Auto-migrate on startup (dev) ─────────────────────────────────────────────
-if (app.Environment.IsDevelopment())
+
+// ── Seed ────────────────────────────────────────────────────────────────────
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
+
+    // Dev ortamında DB'yi sıfırlayıp yeniden seed'le
+    if (app.Environment.IsDevelopment())
+    {
+        await db.Database.EnsureDeletedAsync();
+        await db.Database.MigrateAsync();
+    }
+    else
+    {
+        await db.Database.MigrateAsync();
+    }
+
+    try
+    {
+        await DataSeeder.SeedAsync(db);
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Seed sırasında hata oluştu!");
+        throw;
+    }
 }
-
 app.Run();
-
 public partial class Program { }

@@ -7,9 +7,8 @@ public record RegisterDto(
     [Required, EmailAddress] string Email,
     [Required, MinLength(8)] string Password,
     [Required, Phone] string Phone,
-    string Role = "Customer"   // Customer | Provider | BusinessOwner
+    string Role = "Receiver"   // Receiver | Provider | Admin
 );
-
 public record LoginDto(
     [Required, EmailAddress] string Email,
     [Required] string Password

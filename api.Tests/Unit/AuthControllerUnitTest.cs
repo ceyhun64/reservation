@@ -48,7 +48,7 @@ public class AuthControllerUnitTests
             FullName = "Test User",
             Email = "test@test.com",
             Password = "Test123!",
-            Role = "Customer"
+            Role = "Receiver"
         });
 
         var ok = Assert.IsType<OkObjectResult>(result);
@@ -67,7 +67,7 @@ public class AuthControllerUnitTests
             FullName = "Test User",
             Email = "duplicate@test.com",
             Password = "Test123!",
-            Role = "Customer"
+            Role = "Receiver"
         };
 
         await controller.Register(dto);
@@ -90,7 +90,7 @@ public class AuthControllerUnitTests
             FullName = "Test User",
             Email = "login@test.com",
             Password = "Test123!",
-            Role = "Customer"
+            Role = "Receiver"
         });
 
         var result = await controller.Login(new LoginDto
@@ -120,7 +120,7 @@ public class AuthControllerUnitTests
             FullName = "Test User",
             Email = "user@test.com",
             Password = "Test123!",
-            Role = "Customer"
+            Role = "Receiver"
         });
 
         var result = await controller.Login(new LoginDto
@@ -160,7 +160,7 @@ public class AuthControllerUnitTests
             FullName = "Test User",
             Email = "hash@test.com",
             Password = "Test123!",
-            Role = "Customer"
+            Role = "Receiver"
         });
 
         var user = db.Users.First();
@@ -180,7 +180,7 @@ public class AuthControllerUnitTests
             FullName = "Test User",
             Email = "save@test.com",
             Password = "Test123!",
-            Role = "Customer"
+            Role = "Receiver"
         });
 
         Assert.Equal(1, db.Users.Count());

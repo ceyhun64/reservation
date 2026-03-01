@@ -58,7 +58,7 @@ public class ServiceController : ControllerBase
 
     /// <summary>Yeni hizmet oluştur</summary>
     [HttpPost]
-    [Authorize(Roles = "BusinessOwner,Admin")]
+    [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<ServiceResponseDto>>> Create(ServiceDto dto)
     {
         var userId = GetUserId();
@@ -91,7 +91,7 @@ public class ServiceController : ControllerBase
 
     /// <summary>Hizmet güncelle</summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = "BusinessOwner,Admin")]
+    [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<ServiceResponseDto>>> Update(int id, ServiceDto dto)
     {
         var userId = GetUserId();
@@ -112,7 +112,7 @@ public class ServiceController : ControllerBase
 
     /// <summary>Hizmet sil</summary>
     [HttpDelete("{id}")]
-    [Authorize(Roles = "BusinessOwner,Admin")]
+    [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {
         var userId = GetUserId();

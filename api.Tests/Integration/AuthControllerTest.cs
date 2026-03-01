@@ -46,7 +46,7 @@ public class AuthControllerTests
             fullName = "Test User",
             email = "test@test.com",
             password = "Test123!",
-            role = "Customer"
+            role = "Receiver"
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -63,7 +63,7 @@ public class AuthControllerTests
             fullName = "Test User",
             email = "duplicate@test.com",
             password = "Test123!",
-            role = "Customer"
+            role = "Receiver"
         };
 
         var first = await client.PostAsJsonAsync("/api/auth/register", data);
@@ -84,7 +84,7 @@ public class AuthControllerTests
             fullName = "Test User",
             email = "login@test.com",
             password = "Test123!",
-            role = "Customer"
+            role = "Receiver"
         });
         Assert.Equal(HttpStatusCode.OK, register.StatusCode);
 

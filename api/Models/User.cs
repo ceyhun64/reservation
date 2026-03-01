@@ -9,21 +9,19 @@ public class User
     public string Phone { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }
 
-    // Customer | Provider | BusinessOwner | Admin
-    public string Role { get; set; } = "Customer";
-
+    // Receiver | Provider | Admin
+    public string Role { get; set; } = "Receiver";
     public bool IsActive { get; set; } = true;
     public bool EmailVerified { get; set; } = false;
     public DateTime? LastLoginAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Customer: aldığı randevular
+    // Receiver: aldığı randevular
     public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
 
     // Provider: bu kullanıcıya ait provider profili (varsa)
     public Provider? ProviderProfile { get; set; }
 
-    // BusinessOwner: sahip olduğu işletmeler
     public ICollection<Business> OwnedBusinesses { get; set; } = new List<Business>();
 
     // Kullanıcının verdiği değerlendirmeler

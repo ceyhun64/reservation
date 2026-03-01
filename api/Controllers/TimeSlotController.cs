@@ -44,7 +44,7 @@ public class TimeSlotController : ControllerBase
 
     /// <summary>Tekli slot ekle</summary>
     [HttpPost("provider/{providerId}")]
-    [Authorize(Roles = "Provider,BusinessOwner,Admin")]
+    [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<TimeSlotResponseDto>>> Create(
         int providerId, TimeSlotCreateDto dto)
     {
@@ -83,7 +83,7 @@ public class TimeSlotController : ControllerBase
 
     /// <summary>Toplu slot oluştur (gün bazlı, örn: 09:00-18:00 arası 30'ar dk)</summary>
     [HttpPost("provider/{providerId}/bulk")]
-    [Authorize(Roles = "Provider,BusinessOwner,Admin")]
+    [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<object>>> CreateBulk(
         int providerId, BulkTimeSlotCreateDto dto)
     {
@@ -121,7 +121,7 @@ public class TimeSlotController : ControllerBase
 
     /// <summary>Slotu bloke et (izin, mola vb.)</summary>
     [HttpPatch("{slotId}/block")]
-    [Authorize(Roles = "Provider,BusinessOwner,Admin")]
+    [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<object>>> Block(int slotId)
     {
         var slot = await _db.TimeSlots.FindAsync(slotId);
@@ -138,7 +138,7 @@ public class TimeSlotController : ControllerBase
 
     /// <summary>Slotu sil (sadece müsait olanlar)</summary>
     [HttpDelete("{slotId}")]
-    [Authorize(Roles = "Provider,BusinessOwner,Admin")]
+    [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(int slotId)
     {
         var slot = await _db.TimeSlots.FindAsync(slotId);

@@ -63,7 +63,7 @@ public class BusinessController : ControllerBase
 
     /// <summary>Yeni işletme oluştur</summary>
     [HttpPost]
-    [Authorize(Roles = "BusinessOwner,Admin")]
+    [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<BusinessResponseDto>>> Create(BusinessDto dto)
     {
         var userId = GetUserId();
@@ -89,7 +89,7 @@ public class BusinessController : ControllerBase
 
     /// <summary>İşletme güncelle</summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = "BusinessOwner,Admin")]
+    [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<BusinessResponseDto>>> Update(int id, BusinessDto dto)
     {
         var userId = GetUserId();
@@ -107,7 +107,7 @@ public class BusinessController : ControllerBase
 
     /// <summary>İşletme sil</summary>
     [HttpDelete("{id}")]
-    [Authorize(Roles = "BusinessOwner,Admin")]
+    [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {
         var userId = GetUserId();

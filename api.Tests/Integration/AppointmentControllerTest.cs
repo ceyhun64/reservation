@@ -37,7 +37,7 @@ public class AppointmentControllerTests
         return factory.CreateClient();
     }
 
-    private async Task<HttpClient> CreateAuthenticatedClient(string role = "Customer")
+    private async Task<HttpClient> CreateAuthenticatedClient(string role = "Receiver")
     {
         var client = CreateFreshClient();
         var email = $"{Guid.NewGuid()}@test.com";
@@ -64,7 +64,7 @@ public class AppointmentControllerTests
     }
 
     // Müşteri + işletme sahibi aynı DB'de, businessId ve serviceId döner
-    private async Task<(HttpClient customerClient, HttpClient ownerClient, int businessId, int serviceId)> CreateFullSetup()
+    private async Task<(HttpClient receiverClient, HttpClient ownerClient, int businessId, int serviceId)> CreateFullSetup()
     {
         var dbName = Guid.NewGuid().ToString();
 
@@ -114,7 +114,7 @@ public class AppointmentControllerTests
         }
 
         var ownerClient = await MakeClient("BusinessOwner");
-        var customerClient = await MakeClient("Customer");
+        var receiverClient = await MakeClient("Receiver");
 
         var businessRes = await ownerClient.PostAsJsonAsync("/api/business", new
         {
@@ -137,15 +137,15 @@ public class AppointmentControllerTests
         var service = await serviceRes.Content.ReadFromJsonAsync<Dictionary<string, object>>();
         var serviceId = int.Parse(service!["id"].ToString()!);
 
-        return (customerClient, ownerClient, businessId, serviceId);
+        return (receiverClient, ownerClient, businessId, serviceId);
     }
 
     [Fact]
     public async Task Create_ShouldReturn201_WhenValidData()
     {
-        var (customerClient, _, _, serviceId) = await CreateFullSetup();
+        var (receiverClient, _, _, serviceId) = await CreateFullSetup();
 
-        var response = await customerClient.PostAsJsonAsync("/api/appointment", new
+        var response = await receiverClient.PostAsJsonAsync("/api/appointment", new
         {
             serviceId = serviceId,
             startTime = DateTime.UtcNow.AddDays(1),
@@ -173,9 +173,9 @@ public class AppointmentControllerTests
     [Fact]
     public async Task Create_ShouldReturn404_WhenServiceNotExists()
     {
-        var customerClient = await CreateAuthenticatedClient("Customer");
+        var receiverClient = await CreateAuthenticatedClient("Receiver");
 
-        var response = await customerClient.PostAsJsonAsync("/api/appointment", new
+        var response = await receiverClient.PostAsJsonAsync("/api/appointment", new
         {
             serviceId = 9999,
             startTime = DateTime.UtcNow.AddDays(1),
@@ -188,11 +188,11 @@ public class AppointmentControllerTests
     [Fact]
     public async Task Create_ShouldReturn400_WhenTimeConflict()
     {
-        var (customerClient, _, _, serviceId) = await CreateFullSetup();
+        var (receiverClient, _, _, serviceId) = await CreateFullSetup();
 
         var startTime = DateTime.UtcNow.AddDays(1);
 
-        await customerClient.PostAsJsonAsync("/api/appointment", new
+        await receiverClient.PostAsJsonAsync("/api/appointment", new
         {
             serviceId = serviceId,
             startTime = startTime,
@@ -200,7 +200,7 @@ public class AppointmentControllerTests
         });
 
         // Aynı saatte ikinci randevu
-        var response = await customerClient.PostAsJsonAsync("/api/appointment", new
+        var response = await receiverClient.PostAsJsonAsync("/api/appointment", new
         {
             serviceId = serviceId,
             startTime = startTime,
@@ -213,25 +213,25 @@ public class AppointmentControllerTests
     [Fact]
     public async Task GetMyAppointments_ShouldReturn200()
     {
-        var (customerClient, _, _, serviceId) = await CreateFullSetup();
+        var (receiverClient, _, _, serviceId) = await CreateFullSetup();
 
-        await customerClient.PostAsJsonAsync("/api/appointment", new
+        await receiverClient.PostAsJsonAsync("/api/appointment", new
         {
             serviceId = serviceId,
             startTime = DateTime.UtcNow.AddDays(1),
             notes = ""
         });
 
-        var response = await customerClient.GetAsync("/api/appointment");
+        var response = await receiverClient.GetAsync("/api/appointment");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
     public async Task Cancel_ShouldReturn200_WhenOwner()
     {
-        var (customerClient, _, _, serviceId) = await CreateFullSetup();
+        var (receiverClient, _, _, serviceId) = await CreateFullSetup();
 
-        var createRes = await customerClient.PostAsJsonAsync("/api/appointment", new
+        var createRes = await receiverClient.PostAsJsonAsync("/api/appointment", new
         {
             serviceId = serviceId,
             startTime = DateTime.UtcNow.AddDays(1),
@@ -241,16 +241,16 @@ public class AppointmentControllerTests
         var created = await createRes.Content.ReadFromJsonAsync<Dictionary<string, object>>();
         var appointmentId = int.Parse(created!["id"].ToString()!);
 
-        var response = await customerClient.PutAsync($"/api/appointment/{appointmentId}/cancel", null);
+        var response = await receiverClient.PutAsync($"/api/appointment/{appointmentId}/cancel", null);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
     public async Task Confirm_ShouldReturn200_WhenBusinessOwner()
     {
-        var (customerClient, ownerClient, _, serviceId) = await CreateFullSetup();
+        var (receiverClient, ownerClient, _, serviceId) = await CreateFullSetup();
 
-        var createRes = await customerClient.PostAsJsonAsync("/api/appointment", new
+        var createRes = await receiverClient.PostAsJsonAsync("/api/appointment", new
         {
             serviceId = serviceId,
             startTime = DateTime.UtcNow.AddDays(1),
@@ -275,9 +275,9 @@ public class AppointmentControllerTests
     [Fact]
     public async Task GetByBusiness_ShouldReturn200_WhenOwner()
     {
-        var (customerClient, ownerClient, businessId, serviceId) = await CreateFullSetup();
+        var (receiverClient, ownerClient, businessId, serviceId) = await CreateFullSetup();
 
-        await customerClient.PostAsJsonAsync("/api/appointment", new
+        await receiverClient.PostAsJsonAsync("/api/appointment", new
         {
             serviceId = serviceId,
             startTime = DateTime.UtcNow.AddDays(1),

@@ -6,7 +6,7 @@ public record AppointmentCreateDto(
     [Required] int ProviderId,
     [Required] int ServiceId,
     [Required] int TimeSlotId,
-    string? CustomerNotes
+    string? ReceiverNotes
 );
 
 public record AppointmentUpdateStatusDto(
@@ -24,8 +24,8 @@ public record AppointmentFilterDto(
 
 public record AppointmentResponseDto(
     int Id,
-    int CustomerId,
-    string CustomerName,
+    int ReceiverId,
+    string ReceiverName,
     int ProviderId,
     string ProviderName,
     int ServiceId,
@@ -35,7 +35,7 @@ public record AppointmentResponseDto(
     DateTime EndTime,
     decimal PricePaid,
     string Status,
-    string? CustomerNotes,
+    string? ReceiverNotes,
     string? ProviderNotes,
     string? CancellationReason,
     bool HasReview,

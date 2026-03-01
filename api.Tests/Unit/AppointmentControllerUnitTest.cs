@@ -20,7 +20,7 @@ public class AppointmentControllerUnitTests
         return new AppDbContext(options);
     }
 
-    private AppointmentController CreateController(AppDbContext db, int userId = 1, string role = "Customer")
+    private AppointmentController CreateController(AppDbContext db, int userId = 1, string role = "Receiver")
     {
         var controller = new AppointmentController(db);
         controller.ControllerContext = new ControllerContext
@@ -41,14 +41,22 @@ public class AppointmentControllerUnitTests
     {
         var business = new Business
         {
-            Name = "Test", Description = "Desc", Address = "Addr", Phone = "123", OwnerId = ownerId
+            Name = "Test",
+            Description = "Desc",
+            Address = "Addr",
+            Phone = "123",
+            OwnerId = ownerId
         };
         db.Businesses.Add(business);
         await db.SaveChangesAsync();
 
         var service = new Service
         {
-            Name = "Hizmet", Description = "Desc", Price = 100, DurationMinutes = 30, BusinessId = business.Id
+            Name = "Hizmet",
+            Description = "Desc",
+            Price = 100,
+            DurationMinutes = 30,
+            BusinessId = business.Id
         };
         db.Services.Add(service);
         await db.SaveChangesAsync();
@@ -101,12 +109,16 @@ public class AppointmentControllerUnitTests
 
         await controller.Create(new AppointmentDto
         {
-            ServiceId = serviceId, StartTime = startTime, Notes = "İlk"
+            ServiceId = serviceId,
+            StartTime = startTime,
+            Notes = "İlk"
         });
 
         var result = await controller.Create(new AppointmentDto
         {
-            ServiceId = serviceId, StartTime = startTime, Notes = "Çakışan"
+            ServiceId = serviceId,
+            StartTime = startTime,
+            Notes = "Çakışan"
         });
 
         Assert.IsType<BadRequestObjectResult>(result);
@@ -122,7 +134,9 @@ public class AppointmentControllerUnitTests
 
         await controller.Create(new AppointmentDto
         {
-            ServiceId = serviceId, StartTime = startTime, Notes = ""
+            ServiceId = serviceId,
+            StartTime = startTime,
+            Notes = ""
         });
 
         var appointment = db.Appointments.First();
@@ -205,8 +219,8 @@ public class AppointmentControllerUnitTests
     {
         var db = CreateInMemoryDb();
         var (_, serviceId) = await CreateBusinessAndService(db);
-        var customer = CreateController(db, userId: 1);
-        await customer.Create(new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) });
+        var receiver = CreateController(db, userId: 1);
+        await receiver.Create(new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) });
         var appointmentId = db.Appointments.First().Id;
 
         var owner = CreateController(db, userId: 1, role: "BusinessOwner");
@@ -231,8 +245,8 @@ public class AppointmentControllerUnitTests
     {
         var db = CreateInMemoryDb();
         var (businessId, serviceId) = await CreateBusinessAndService(db, ownerId: 1);
-        var customer = CreateController(db, userId: 2);
-        await customer.Create(new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) });
+        var receiver = CreateController(db, userId: 2);
+        await receiver.Create(new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) });
 
         var owner = CreateController(db, userId: 1, role: "BusinessOwner");
         var result = await owner.GetByBusiness(businessId);
