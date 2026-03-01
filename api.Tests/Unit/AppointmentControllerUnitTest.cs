@@ -223,7 +223,7 @@ public class AppointmentControllerUnitTests
         await receiver.Create(new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) });
         var appointmentId = db.Appointments.First().Id;
 
-        var owner = CreateController(db, userId: 1, role: "BusinessOwner");
+        var owner = CreateController(db, userId: 1, role: "Provider");
         var result = await owner.Confirm(appointmentId);
         Assert.IsType<OkObjectResult>(result);
         Assert.Equal("Confirmed", db.Appointments.First().Status);
@@ -233,7 +233,7 @@ public class AppointmentControllerUnitTests
     public async Task Confirm_ShouldReturn404_WhenNotExists()
     {
         var db = CreateInMemoryDb();
-        var controller = CreateController(db, userId: 1, role: "BusinessOwner");
+        var controller = CreateController(db, userId: 1, role: "Provider");
         var result = await controller.Confirm(9999);
         Assert.IsType<NotFoundObjectResult>(result);
     }
@@ -248,7 +248,7 @@ public class AppointmentControllerUnitTests
         var receiver = CreateController(db, userId: 2);
         await receiver.Create(new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) });
 
-        var owner = CreateController(db, userId: 1, role: "BusinessOwner");
+        var owner = CreateController(db, userId: 1, role: "Provider");
         var result = await owner.GetByBusiness(businessId);
         Assert.IsType<OkObjectResult>(result);
     }
@@ -259,7 +259,7 @@ public class AppointmentControllerUnitTests
         var db = CreateInMemoryDb();
         var (businessId, _) = await CreateBusinessAndService(db, ownerId: 1);
 
-        var otherUser = CreateController(db, userId: 99, role: "BusinessOwner");
+        var otherUser = CreateController(db, userId: 99, role: "Provider");
         var result = await otherUser.GetByBusiness(businessId);
         Assert.IsType<ForbidResult>(result);
     }

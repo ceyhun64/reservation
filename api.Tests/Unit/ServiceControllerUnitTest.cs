@@ -30,7 +30,7 @@ public class ServiceControllerUnitTests
                 User = new ClaimsPrincipal(new ClaimsIdentity(new[]
                 {
                     new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
-                    new Claim(ClaimTypes.Role, "BusinessOwner")
+                    new Claim(ClaimTypes.Role, "Provider")
                 }, "test"))
             }
         };
@@ -41,14 +41,22 @@ public class ServiceControllerUnitTests
     {
         var business = new Business
         {
-            Name = "Test", Description = "Desc", Address = "Addr", Phone = "123", OwnerId = ownerId
+            Name = "Test",
+            Description = "Desc",
+            Address = "Addr",
+            Phone = "123",
+            OwnerId = ownerId
         };
         db.Businesses.Add(business);
         await db.SaveChangesAsync();
 
         var service = new Service
         {
-            Name = "Test Hizmet", Description = "Desc", Price = 100, DurationMinutes = 30, BusinessId = business.Id
+            Name = "Test Hizmet",
+            Description = "Desc",
+            Price = 100,
+            DurationMinutes = 30,
+            BusinessId = business.Id
         };
         db.Services.Add(service);
         await db.SaveChangesAsync();
@@ -111,7 +119,11 @@ public class ServiceControllerUnitTests
         var db = CreateInMemoryDb();
         var business = new Business
         {
-            Name = "Test", Description = "Desc", Address = "Addr", Phone = "123", OwnerId = 1
+            Name = "Test",
+            Description = "Desc",
+            Address = "Addr",
+            Phone = "123",
+            OwnerId = 1
         };
         db.Businesses.Add(business);
         await db.SaveChangesAsync();
@@ -119,7 +131,11 @@ public class ServiceControllerUnitTests
         var controller = CreateController(db, userId: 1);
         var result = await controller.Create(new ServiceDto
         {
-            Name = "Hizmet", Description = "Desc", Price = 100, DurationMinutes = 30, BusinessId = business.Id
+            Name = "Hizmet",
+            Description = "Desc",
+            Price = 100,
+            DurationMinutes = 30,
+            BusinessId = business.Id
         });
 
         Assert.IsType<CreatedAtActionResult>(result);
@@ -133,7 +149,11 @@ public class ServiceControllerUnitTests
 
         var result = await controller.Create(new ServiceDto
         {
-            Name = "Hizmet", Description = "Desc", Price = 100, DurationMinutes = 30, BusinessId = 9999
+            Name = "Hizmet",
+            Description = "Desc",
+            Price = 100,
+            DurationMinutes = 30,
+            BusinessId = 9999
         });
 
         Assert.IsType<NotFoundObjectResult>(result);
@@ -145,7 +165,11 @@ public class ServiceControllerUnitTests
         var db = CreateInMemoryDb();
         var business = new Business
         {
-            Name = "Test", Description = "Desc", Address = "Addr", Phone = "123", OwnerId = 1
+            Name = "Test",
+            Description = "Desc",
+            Address = "Addr",
+            Phone = "123",
+            OwnerId = 1
         };
         db.Businesses.Add(business);
         await db.SaveChangesAsync();
@@ -153,7 +177,11 @@ public class ServiceControllerUnitTests
         var controller = CreateController(db, userId: 99);
         var result = await controller.Create(new ServiceDto
         {
-            Name = "Hizmet", Description = "Desc", Price = 100, DurationMinutes = 30, BusinessId = business.Id
+            Name = "Hizmet",
+            Description = "Desc",
+            Price = 100,
+            DurationMinutes = 30,
+            BusinessId = business.Id
         });
 
         Assert.IsType<ForbidResult>(result);
@@ -170,7 +198,11 @@ public class ServiceControllerUnitTests
 
         var result = await controller.Update(serviceId, new ServiceDto
         {
-            Name = "Güncel", Description = "Desc", Price = 200, DurationMinutes = 60, BusinessId = 1
+            Name = "Güncel",
+            Description = "Desc",
+            Price = 200,
+            DurationMinutes = 60,
+            BusinessId = 1
         });
 
         Assert.IsType<OkObjectResult>(result);
@@ -184,7 +216,11 @@ public class ServiceControllerUnitTests
 
         var result = await controller.Update(9999, new ServiceDto
         {
-            Name = "Güncel", Description = "Desc", Price = 200, DurationMinutes = 60, BusinessId = 1
+            Name = "Güncel",
+            Description = "Desc",
+            Price = 200,
+            DurationMinutes = 60,
+            BusinessId = 1
         });
 
         Assert.IsType<NotFoundObjectResult>(result);
@@ -199,7 +235,11 @@ public class ServiceControllerUnitTests
 
         var result = await controller.Update(serviceId, new ServiceDto
         {
-            Name = "Hack", Description = "Desc", Price = 200, DurationMinutes = 60, BusinessId = 1
+            Name = "Hack",
+            Description = "Desc",
+            Price = 200,
+            DurationMinutes = 60,
+            BusinessId = 1
         });
 
         Assert.IsType<ForbidResult>(result);

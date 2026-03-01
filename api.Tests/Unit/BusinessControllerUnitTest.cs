@@ -19,7 +19,7 @@ public class BusinessControllerUnitTests
         return new AppDbContext(options);
     }
 
-    private BusinessController CreateController(AppDbContext db, int userId = 1, string role = "BusinessOwner")
+    private BusinessController CreateController(AppDbContext db, int userId = 1, string role = "Provider")
     {
         var controller = new BusinessController(db);
         controller.ControllerContext = new ControllerContext
@@ -59,7 +59,10 @@ public class BusinessControllerUnitTests
 
         await controller.Create(new BusinessDto
         {
-            Name = "Test", Description = "Desc", Address = "Addr", Phone = "123"
+            Name = "Test",
+            Description = "Desc",
+            Address = "Addr",
+            Phone = "123"
         });
 
         var result = await controller.GetById(1);
@@ -121,7 +124,10 @@ public class BusinessControllerUnitTests
 
         await controller.Create(new BusinessDto
         {
-            Name = "Test", Description = "Desc", Address = "Addr", Phone = "123"
+            Name = "Test",
+            Description = "Desc",
+            Address = "Addr",
+            Phone = "123"
         });
 
         Assert.Equal(42, db.Businesses.First().OwnerId);
@@ -137,12 +143,18 @@ public class BusinessControllerUnitTests
 
         await controller.Create(new BusinessDto
         {
-            Name = "Eski", Description = "Desc", Address = "Addr", Phone = "123"
+            Name = "Eski",
+            Description = "Desc",
+            Address = "Addr",
+            Phone = "123"
         });
 
         var result = await controller.Update(1, new BusinessDto
         {
-            Name = "Yeni", Description = "Desc", Address = "Addr", Phone = "123"
+            Name = "Yeni",
+            Description = "Desc",
+            Address = "Addr",
+            Phone = "123"
         });
 
         Assert.IsType<OkObjectResult>(result);
@@ -157,7 +169,10 @@ public class BusinessControllerUnitTests
 
         var result = await controller.Update(9999, new BusinessDto
         {
-            Name = "Yeni", Description = "Desc", Address = "Addr", Phone = "123"
+            Name = "Yeni",
+            Description = "Desc",
+            Address = "Addr",
+            Phone = "123"
         });
 
         Assert.IsType<NotFoundObjectResult>(result);
@@ -170,13 +185,19 @@ public class BusinessControllerUnitTests
         var owner = CreateController(db, userId: 1);
         await owner.Create(new BusinessDto
         {
-            Name = "Test", Description = "Desc", Address = "Addr", Phone = "123"
+            Name = "Test",
+            Description = "Desc",
+            Address = "Addr",
+            Phone = "123"
         });
 
         var otherUser = CreateController(db, userId: 99);
         var result = await otherUser.Update(1, new BusinessDto
         {
-            Name = "Hack", Description = "Desc", Address = "Addr", Phone = "123"
+            Name = "Hack",
+            Description = "Desc",
+            Address = "Addr",
+            Phone = "123"
         });
 
         Assert.IsType<ForbidResult>(result);
@@ -192,7 +213,10 @@ public class BusinessControllerUnitTests
 
         await controller.Create(new BusinessDto
         {
-            Name = "Test", Description = "Desc", Address = "Addr", Phone = "123"
+            Name = "Test",
+            Description = "Desc",
+            Address = "Addr",
+            Phone = "123"
         });
 
         var result = await controller.Delete(1);
@@ -218,7 +242,10 @@ public class BusinessControllerUnitTests
         var owner = CreateController(db, userId: 1);
         await owner.Create(new BusinessDto
         {
-            Name = "Test", Description = "Desc", Address = "Addr", Phone = "123"
+            Name = "Test",
+            Description = "Desc",
+            Address = "Addr",
+            Phone = "123"
         });
 
         var otherUser = CreateController(db, userId: 99);

@@ -37,7 +37,7 @@ public class BusinessControllerTests
         return factory.CreateClient();
     }
 
-    private async Task<HttpClient> CreateAuthenticatedClient(string role = "BusinessOwner")
+    private async Task<HttpClient> CreateAuthenticatedClient(string role = "Provider")
     {
         var client = CreateFreshClient();
         var email = $"{Guid.NewGuid()}@test.com";
@@ -72,9 +72,9 @@ public class BusinessControllerTests
     }
 
     [Fact]
-    public async Task Create_ShouldReturn201_WhenBusinessOwner()
+    public async Task Create_ShouldReturn201_WhenProvider()
     {
-        var client = await CreateAuthenticatedClient("BusinessOwner");
+        var client = await CreateAuthenticatedClient("Provider");
 
         var response = await client.PostAsJsonAsync("/api/business", new
         {
@@ -106,7 +106,7 @@ public class BusinessControllerTests
     [Fact]
     public async Task Update_ShouldReturn200_WhenOwner()
     {
-        var client = await CreateAuthenticatedClient("BusinessOwner");
+        var client = await CreateAuthenticatedClient("Provider");
 
         var createResponse = await client.PostAsJsonAsync("/api/business", new
         {
@@ -134,7 +134,7 @@ public class BusinessControllerTests
     public async Task Update_ShouldReturn403_WhenNotOwner()
     {
         // İlk kullanıcı işletme oluşturur
-        var client1 = await CreateAuthenticatedClient("BusinessOwner");
+        var client1 = await CreateAuthenticatedClient("Provider");
         var createResponse = await client1.PostAsJsonAsync("/api/business", new
         {
             name = "Test İşletme",
@@ -146,7 +146,7 @@ public class BusinessControllerTests
         var businessId = created!["id"];
 
         // İkinci kullanıcı (farklı DB) — 404 döner çünkü işletmeyi göremez
-        var client2 = await CreateAuthenticatedClient("BusinessOwner");
+        var client2 = await CreateAuthenticatedClient("Provider");
         var updateResponse = await client2.PutAsJsonAsync($"/api/business/{businessId}", new
         {
             name = "Hack",
@@ -161,7 +161,7 @@ public class BusinessControllerTests
     [Fact]
     public async Task Delete_ShouldReturn204_WhenOwner()
     {
-        var client = await CreateAuthenticatedClient("BusinessOwner");
+        var client = await CreateAuthenticatedClient("Provider");
 
         var createResponse = await client.PostAsJsonAsync("/api/business", new
         {

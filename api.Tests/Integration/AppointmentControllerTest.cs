@@ -113,7 +113,7 @@ public class AppointmentControllerTests
             return client;
         }
 
-        var ownerClient = await MakeClient("BusinessOwner");
+        var ownerClient = await MakeClient("Provider");
         var receiverClient = await MakeClient("Receiver");
 
         var businessRes = await ownerClient.PostAsJsonAsync("/api/business", new
@@ -246,7 +246,7 @@ public class AppointmentControllerTests
     }
 
     [Fact]
-    public async Task Confirm_ShouldReturn200_WhenBusinessOwner()
+    public async Task Confirm_ShouldReturn200_WhenProvider()
     {
         var (receiverClient, ownerClient, _, serviceId) = await CreateFullSetup();
 

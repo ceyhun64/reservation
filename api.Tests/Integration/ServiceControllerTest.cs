@@ -37,7 +37,7 @@ public class ServiceControllerTests
         return factory.CreateClient();
     }
 
-    private async Task<HttpClient> CreateAuthenticatedClient(string role = "BusinessOwner")
+    private async Task<HttpClient> CreateAuthenticatedClient(string role = "Provider")
     {
         var client = CreateFreshClient();
         var email = $"{Guid.NewGuid()}@test.com";
@@ -66,7 +66,7 @@ public class ServiceControllerTests
     // İşletme + hizmet oluşturup businessId ve serviceId döner
     private async Task<(HttpClient client, int businessId, int serviceId)> CreateClientWithBusinessAndService()
     {
-        var client = await CreateAuthenticatedClient("BusinessOwner");
+        var client = await CreateAuthenticatedClient("Provider");
 
         var businessRes = await client.PostAsJsonAsync("/api/business", new
         {
@@ -125,7 +125,7 @@ public class ServiceControllerTests
     }
 
     [Fact]
-    public async Task Create_ShouldReturn201_WhenBusinessOwner()
+    public async Task Create_ShouldReturn201_WhenProvider()
     {
         var (client, businessId, _) = await CreateClientWithBusinessAndService();
 
@@ -161,7 +161,7 @@ public class ServiceControllerTests
     [Fact]
     public async Task Create_ShouldReturn404_WhenBusinessNotExists()
     {
-        var client = await CreateAuthenticatedClient("BusinessOwner");
+        var client = await CreateAuthenticatedClient("Provider");
 
         var response = await client.PostAsJsonAsync("/api/service", new
         {

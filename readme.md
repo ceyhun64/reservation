@@ -7,7 +7,7 @@ Her sektöre uygun, çok kullanıcılı evrensel randevu yönetim sistemi.
 ## Mimari Özeti
 
 ```
-User (Receiver / Provider / BusinessOwner / Admin)
+User (Receiver / Provider / Provider / Admin)
   │
   ├─▶ Business (İşletme: Klinik, Kuaför, Spor Salonu...)
   │     └─▶ Service (Hizmet: Saç Kesimi, Diş Muayenesi...)
@@ -55,12 +55,12 @@ dotnet run
 
 ## Roller
 
-| Rol             | Yetki                                      |
-| --------------- | ------------------------------------------ |
-| `Receiver`      | Randevu al, iptal et, değerlendirme yaz    |
-| `Provider`      | Slot oluştur, randevuları yönet, cevap ver |
-| `BusinessOwner` | İşletme + hizmet yönetimi, provider ekleme |
-| `Admin`         | Her şey + moderasyon                       |
+| Rol        | Yetki                                      |
+| ---------- | ------------------------------------------ |
+| `Receiver` | Randevu al, iptal et, değerlendirme yaz    |
+| `Provider` | Slot oluştur, randevuları yönet, cevap ver |
+| `Provider` | İşletme + hizmet yönetimi, provider ekleme |
+| `Admin`    | Her şey + moderasyon                       |
 
 ---
 
@@ -83,13 +83,13 @@ dotnet run
 
 ### İşletmeler
 
-| Method | Endpoint                               | Açıklama                |
-| ------ | -------------------------------------- | ----------------------- |
-| GET    | `/api/businesses?city=&keyword=&page=` | Filtreli liste          |
-| GET    | `/api/businesses/{id}`                 | Detay                   |
-| POST   | `/api/businesses`                      | Oluştur (BusinessOwner) |
-| PUT    | `/api/businesses/{id}`                 | Güncelle                |
-| DELETE | `/api/businesses/{id}`                 | Sil (soft delete)       |
+| Method | Endpoint                               | Açıklama           |
+| ------ | -------------------------------------- | ------------------ |
+| GET    | `/api/businesses?city=&keyword=&page=` | Filtreli liste     |
+| GET    | `/api/businesses/{id}`                 | Detay              |
+| POST   | `/api/businesses`                      | Oluştur (Provider) |
+| PUT    | `/api/businesses/{id}`                 | Güncelle           |
+| DELETE | `/api/businesses/{id}`                 | Sil (soft delete)  |
 
 ### Provider'lar
 
@@ -104,13 +104,13 @@ dotnet run
 
 ### Hizmetler
 
-| Method | Endpoint                                         | Açıklama                |
-| ------ | ------------------------------------------------ | ----------------------- |
-| GET    | `/api/services?categoryId=&businessId=&keyword=` | Filtreli liste          |
-| GET    | `/api/services/{id}`                             | Detay                   |
-| POST   | `/api/services`                                  | Oluştur (BusinessOwner) |
-| PUT    | `/api/services/{id}`                             | Güncelle                |
-| DELETE | `/api/services/{id}`                             | Sil                     |
+| Method | Endpoint                                         | Açıklama           |
+| ------ | ------------------------------------------------ | ------------------ |
+| GET    | `/api/services?categoryId=&businessId=&keyword=` | Filtreli liste     |
+| GET    | `/api/services/{id}`                             | Detay              |
+| POST   | `/api/services`                                  | Oluştur (Provider) |
+| PUT    | `/api/services/{id}`                             | Güncelle           |
+| DELETE | `/api/services/{id}`                             | Sil                |
 
 ### Zaman Slotları
 
@@ -155,7 +155,7 @@ dotnet run
 ## Örnek Kullanım Akışı
 
 ```
-1. BusinessOwner kayıt → POST /api/auth/register (Role: BusinessOwner)
+1. Provider kayıt → POST /api/auth/register (Role: Provider)
 2. İşletme oluştur    → POST /api/businesses
 3. Hizmet ekle        → POST /api/services (categoryId ile kategori seç)
 4. Provider kayıt     → POST /api/auth/register (Role: Provider)
