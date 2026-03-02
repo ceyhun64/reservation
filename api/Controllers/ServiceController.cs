@@ -17,17 +17,19 @@ public class ServiceController : ControllerBase
 
     public ServiceController(AppDbContext db) => _db = db;
 
-    /// <summary>Hizmet listesi (kategori ve işletmeye göre filtre)</summary>
+    /// <summary>Hizmet listesi (kategori, işletme, provider filtresi)</summary>
     [HttpGet]
     public async Task<ActionResult<ApiResponse<List<ServiceResponseDto>>>> GetAll(
         [FromQuery] int? categoryId,
         [FromQuery] int? businessId,
+        [FromQuery] int? providerId,
         [FromQuery] string? keyword
     )
     {
         var query = _db
             .Services.Include(s => s.Category)
             .Include(s => s.Business)
+                .ThenInclude(b => b.Provider.User)
             .Where(s => s.IsActive)
             .AsQueryable();
 
@@ -38,6 +40,9 @@ public class ServiceController : ControllerBase
 
         if (businessId.HasValue)
             query = query.Where(s => s.BusinessId == businessId);
+
+        if (providerId.HasValue)
+            query = query.Where(s => s.Business.ProviderId == providerId);
 
         if (!string.IsNullOrWhiteSpace(keyword))
             query = query.Where(s => s.Name.ToLower().Contains(keyword.ToLower()));
@@ -53,6 +58,7 @@ public class ServiceController : ControllerBase
         var s = await _db
             .Services.Include(s => s.Category)
             .Include(s => s.Business)
+                .ThenInclude(b => b.Provider.User)
             .FirstOrDefaultAsync(s => s.Id == id);
 
         if (s is null)
@@ -65,12 +71,13 @@ public class ServiceController : ControllerBase
     [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<ServiceResponseDto>>> Create(ServiceDto dto)
     {
-        var userId = GetUserId();
+        var business = await _db
+            .Businesses.Include(b => b.Provider)
+            .FirstOrDefaultAsync(b => b.Id == dto.BusinessId);
 
-        var business = await _db.Businesses.FindAsync(dto.BusinessId);
         if (business is null)
             return NotFound(ApiResponse<ServiceResponseDto>.Fail("İşletme bulunamadı."));
-        if (business.OwnerId != userId && !User.IsInRole("Admin"))
+        if (!await IsOwnerAsync(business.ProviderId))
             return Forbid();
 
         if (!await _db.Categories.AnyAsync(c => c.Id == dto.CategoryId && c.IsActive))
@@ -90,6 +97,8 @@ public class ServiceController : ControllerBase
         await _db.SaveChangesAsync();
         await _db.Entry(service).Reference(s => s.Category).LoadAsync();
         await _db.Entry(service).Reference(s => s.Business).LoadAsync();
+        await _db.Entry(service.Business).Reference(b => b.Provider).LoadAsync();
+        await _db.Entry(service.Business.Provider).Reference(p => p.User).LoadAsync();
 
         return CreatedAtAction(
             nameof(GetById),
@@ -103,15 +112,15 @@ public class ServiceController : ControllerBase
     [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<ServiceResponseDto>>> Update(int id, ServiceDto dto)
     {
-        var userId = GetUserId();
         var s = await _db
             .Services.Include(s => s.Category)
             .Include(s => s.Business)
+                .ThenInclude(b => b.Provider.User)
             .FirstOrDefaultAsync(s => s.Id == id);
 
         if (s is null)
             return NotFound(ApiResponse<ServiceResponseDto>.Fail("Hizmet bulunamadı."));
-        if (s.Business.OwnerId != userId && !User.IsInRole("Admin"))
+        if (!await IsOwnerAsync(s.Business.ProviderId))
             return Forbid();
 
         s.Name = dto.Name;
@@ -124,17 +133,16 @@ public class ServiceController : ControllerBase
         return Ok(ApiResponse<ServiceResponseDto>.Ok(ToDto(s)));
     }
 
-    /// <summary>Hizmet sil</summary>
+    /// <summary>Hizmet sil (soft delete)</summary>
     [HttpDelete("{id}")]
     [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {
-        var userId = GetUserId();
         var s = await _db.Services.Include(s => s.Business).FirstOrDefaultAsync(s => s.Id == id);
 
         if (s is null)
             return NotFound(ApiResponse<object>.Fail("Hizmet bulunamadı."));
-        if (s.Business.OwnerId != userId && !User.IsInRole("Admin"))
+        if (!await IsOwnerAsync(s.Business.ProviderId))
             return Forbid();
 
         s.IsActive = false;
@@ -142,7 +150,18 @@ public class ServiceController : ControllerBase
         return Ok(ApiResponse<object>.Ok(null, "Hizmet kaldırıldı."));
     }
 
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
     private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+    private async Task<bool> IsOwnerAsync(int providerId)
+    {
+        if (User.IsInRole("Admin"))
+            return true;
+        var userId = GetUserId();
+        var provider = await _db.Providers.FirstOrDefaultAsync(p => p.UserId == userId);
+        return provider?.Id == providerId;
+    }
 
     private static ServiceResponseDto ToDto(Service s) =>
         new(
@@ -154,6 +173,8 @@ public class ServiceController : ControllerBase
             s.CategoryId,
             s.Category?.Name ?? "",
             s.BusinessId,
-            s.Business?.Name ?? ""
+            s.Business?.Name ?? "",
+            s.Business?.ProviderId ?? 0,
+            s.Business?.Provider?.User?.FullName ?? ""
         );
 }

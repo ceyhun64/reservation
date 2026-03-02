@@ -15,13 +15,12 @@ public class Business
     public bool IsActive { get; set; } = true;
     public bool IsVerified { get; set; } = false;
 
-    public int OwnerId { get; set; }
-    public User Owner { get; set; } = null!;
+    // Bu işletmenin sahibi olan Provider
+    public int ProviderId { get; set; }
+    public Provider Provider { get; set; } = null!;
 
+    // İşletmenin sunduğu hizmetler
     public ICollection<Service> Services { get; set; } = new List<Service>();
-
-    // Bir işletmede birden fazla uzman/provider çalışabilir
-    public ICollection<Provider> Providers { get; set; } = new List<Provider>();
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

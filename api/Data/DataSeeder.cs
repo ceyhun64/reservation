@@ -10,8 +10,10 @@ public static class DataSeeder
         if (await db.Users.AnyAsync())
             return;
 
-        // ── 1. USERS ──────────────────────────────────────────────────────────
         string hash = BCrypt.Net.BCrypt.HashPassword("password");
+
+        // ── 1. USERS ──────────────────────────────────────────────────────────
+        // 3 kullanıcı: 1 Receiver, 1 Provider, 1 Admin
         var users = new List<User>
         {
             new()
@@ -28,42 +30,8 @@ public static class DataSeeder
             new()
             {
                 Id = 2,
-                FullName = "Zeynep Kaya",
-                Email = "zeynep@example.com",
-                PasswordHash = hash,
-                Phone = "5301234002",
-                Role = "Receiver",
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 12),
-            },
-            new()
-            {
-                Id = 3,
-                FullName = "Murat Demir",
-                Email = "murat@example.com",
-                PasswordHash = hash,
-                Phone = "5301234003",
-                Role = "Receiver",
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 15),
-            },
-            new()
-            {
-                Id = 4,
-                FullName = "Selin Arslan",
-                Email = "selin@example.com",
-                PasswordHash = hash,
-                Phone = "5301234004",
-                Role = "Receiver",
-                IsActive = true,
-                CreatedAt = Utc(2024, 2, 1),
-            },
-            // İşletme Sahipleri
-            new()
-            {
-                Id = 5,
                 FullName = "Emre Şahin",
-                Email = "emre@barbershop.com",
+                Email = "emre@provider.com",
                 PasswordHash = hash,
                 Phone = "5301235001",
                 Role = "Provider",
@@ -72,86 +40,7 @@ public static class DataSeeder
             },
             new()
             {
-                Id = 6,
-                FullName = "Leyla Doğan",
-                Email = "leyla@lumiere.com",
-                PasswordHash = hash,
-                Phone = "5301235002",
-                Role = "Provider",
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 8),
-            },
-            new()
-            {
-                Id = 7,
-                FullName = "Can Öztürk",
-                Email = "can@formfitness.com",
-                PasswordHash = hash,
-                Phone = "5301235003",
-                Role = "Provider",
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 10),
-            },
-            // Provider'lar (çalışanlar)
-            new()
-            {
-                Id = 8,
-                FullName = "Tarık Yıldız",
-                Email = "tarik@barbershop.com",
-                PasswordHash = hash,
-                Phone = "5301236001",
-                Role = "Provider",
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 6),
-            },
-            new()
-            {
-                Id = 9,
-                FullName = "Burak Çelik",
-                Email = "burak@barbershop.com",
-                PasswordHash = hash,
-                Phone = "5301236002",
-                Role = "Provider",
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 6),
-            },
-            new()
-            {
-                Id = 10,
-                FullName = "Nilüfer Ay",
-                Email = "nilufer@lumiere.com",
-                PasswordHash = hash,
-                Phone = "5301236003",
-                Role = "Provider",
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 9),
-            },
-            new()
-            {
-                Id = 11,
-                FullName = "Berna Koç",
-                Email = "berna@lumiere.com",
-                PasswordHash = hash,
-                Phone = "5301236004",
-                Role = "Provider",
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 9),
-            },
-            new()
-            {
-                Id = 12,
-                FullName = "Serkan Aydın",
-                Email = "serkan@formfitness.com",
-                PasswordHash = hash,
-                Phone = "5301236005",
-                Role = "Provider",
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 11),
-            },
-            // Admin
-            new()
-            {
-                Id = 13,
+                Id = 3,
                 FullName = "Admin Kullanıcı",
                 Email = "admin@rezervo.com",
                 PasswordHash = hash,
@@ -162,15 +51,35 @@ public static class DataSeeder
             },
         };
         await db.Users.AddRangeAsync(users);
+        await db.SaveChangesAsync();
 
-        // ── 2. BUSINESSES ─────────────────────────────────────────────────────
+        // ── 2. PROVIDER PROFİLİ ───────────────────────────────────────────────
+        // Emre hem berber hem fitness koçu - 2 ayrı işletmesi var, tek provider
+        var provider = new Provider
+        {
+            Id = 1,
+            UserId = 2,
+            Title = "Berber & Fitness Koçu",
+            Bio =
+                "10 yıllık berberlik ve 5 yıllık kişisel antrenörlük deneyimi. Her iki işletmemi de kendim yönetiyorum.",
+            AverageRating = 4.9,
+            TotalReviews = 3,
+            AcceptsOnlineBooking = true,
+            IsActive = true,
+            CreatedAt = Utc(2024, 1, 5),
+        };
+        await db.Providers.AddAsync(provider);
+        await db.SaveChangesAsync();
+
+        // ── 3. BUSINESSES ─────────────────────────────────────────────────────
+        // Aynı provider'ın 2 farklı işletmesi
         var businesses = new List<Business>
         {
             new()
             {
                 Id = 1,
                 Name = "Prestige Barber Studio",
-                OwnerId = 5,
+                ProviderId = 1,
                 Description =
                     "İstanbul'un kalbinde premium erkek kuaförü. Modern teknikler, klasik dokunuş.",
                 Address = "Nişantaşı Mah. Teşvikiye Cad. No:42",
@@ -185,24 +94,8 @@ public static class DataSeeder
             new()
             {
                 Id = 2,
-                Name = "Lumière Beauty Studio",
-                OwnerId = 6,
-                Description =
-                    "Kadıköy'ün en prestijli güzellik salonu. Saç, cilt ve tırnak bakımında uzman ekip.",
-                Address = "Moda Cad. No:15 Kadıköy",
-                City = "İstanbul",
-                Phone = "02162345002",
-                Email = "info@lumiere.com",
-                Website = "https://lumiere.com",
-                IsVerified = true,
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 8),
-            },
-            new()
-            {
-                Id = 3,
                 Name = "Form Fitness & Wellness",
-                OwnerId = 7,
+                ProviderId = 1,
                 Description = "Kişiselleştirilmiş antrenman programları ve wellness hizmetleri.",
                 Address = "Bağcılar Cad. No:88 Levent",
                 City = "İstanbul",
@@ -214,124 +107,12 @@ public static class DataSeeder
             },
         };
         await db.Businesses.AddRangeAsync(businesses);
-
-        // ── 3. PROVIDERS ─────────────────────────────────────────────────────
-        var providers = new List<Provider>
-        {
-            // İşletme sahiplerinin provider profilleri (yeni eklendi)
-            new()
-            {
-                Id = 6,
-                UserId = 5,
-                BusinessId = 1,
-                Title = "İşletme Sahibi",
-                Bio = "Prestige Barber Studio sahibi.",
-                AverageRating = 0,
-                TotalReviews = 0,
-                AcceptsOnlineBooking = false,
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 5),
-            },
-            new()
-            {
-                Id = 7,
-                UserId = 6,
-                BusinessId = 2,
-                Title = "İşletme Sahibi",
-                Bio = "Lumière Beauty Studio sahibi.",
-                AverageRating = 0,
-                TotalReviews = 0,
-                AcceptsOnlineBooking = false,
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 8),
-            },
-            new()
-            {
-                Id = 8,
-                UserId = 7,
-                BusinessId = 3,
-                Title = "İşletme Sahibi",
-                Bio = "Form Fitness & Wellness sahibi.",
-                AverageRating = 0,
-                TotalReviews = 0,
-                AcceptsOnlineBooking = false,
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 10),
-            },
-            // Çalışan provider'lar
-            new()
-            {
-                Id = 1,
-                UserId = 8,
-                BusinessId = 1,
-                Title = "Baş Berber",
-                Bio = "10 yıl deneyimli master berber. Fade, klasik ve modern kesim uzmanlığı.",
-                AverageRating = 4.9,
-                TotalReviews = 87,
-                AcceptsOnlineBooking = true,
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 6),
-            },
-            new()
-            {
-                Id = 2,
-                UserId = 9,
-                BusinessId = 1,
-                Title = "Berber",
-                Bio = "5 yıllık deneyim. Sakal şekillendirme ve bıyık bakımı konusunda uzman.",
-                AverageRating = 4.7,
-                TotalReviews = 52,
-                AcceptsOnlineBooking = true,
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 6),
-            },
-            new()
-            {
-                Id = 3,
-                UserId = 10,
-                BusinessId = 2,
-                Title = "Saç Tasarımcısı",
-                Bio = "Paris'te eğitim almış renk ve kesim uzmanı. 8 yıllık sektör deneyimi.",
-                AverageRating = 4.8,
-                TotalReviews = 134,
-                AcceptsOnlineBooking = true,
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 9),
-            },
-            new()
-            {
-                Id = 4,
-                UserId = 11,
-                BusinessId = 2,
-                Title = "Güzellik Uzmanı",
-                Bio = "Cilt bakımı, makyaj ve tırnak tasarımında sertifikalı uzman.",
-                AverageRating = 4.6,
-                TotalReviews = 96,
-                AcceptsOnlineBooking = true,
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 9),
-            },
-            new()
-            {
-                Id = 5,
-                UserId = 12,
-                BusinessId = 3,
-                Title = "Kişisel Antrenör",
-                Bio =
-                    "Sporcu kökenli sertifikalı PT. Kilo yönetimi ve performans antrenmanı uzmanı.",
-                AverageRating = 5.0,
-                TotalReviews = 41,
-                AcceptsOnlineBooking = true,
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 11),
-            },
-        };
-        await db.Providers.AddRangeAsync(providers);
         await db.SaveChangesAsync();
 
         // ── 4. SERVICES ──────────────────────────────────────────────────────
         var services = new List<Service>
         {
+            // Berber işletmesi hizmetleri
             new()
             {
                 Id = 1,
@@ -380,70 +161,11 @@ public static class DataSeeder
                 IsActive = true,
                 CreatedAt = Utc(2024, 1, 5),
             },
+            // Fitness işletmesi hizmetleri
             new()
             {
                 Id = 5,
                 BusinessId = 2,
-                CategoryId = 20,
-                Name = "Saç Kesimi (Kadın)",
-                Description = "Konsültasyon + kesim + fön.",
-                Price = 350,
-                DurationMinutes = 60,
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 8),
-            },
-            new()
-            {
-                Id = 6,
-                BusinessId = 2,
-                CategoryId = 20,
-                Name = "Saç Boyama",
-                Description = "Tek renk boya + bakım maskesi.",
-                Price = 600,
-                DurationMinutes = 90,
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 8),
-            },
-            new()
-            {
-                Id = 7,
-                BusinessId = 2,
-                CategoryId = 20,
-                Name = "Balayage / Ombre",
-                Description = "Profesyonel balayage tekniği.",
-                Price = 900,
-                DurationMinutes = 120,
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 8),
-            },
-            new()
-            {
-                Id = 8,
-                BusinessId = 2,
-                CategoryId = 21,
-                Name = "Gelin Makyajı",
-                Description = "HD ve airbrush makyaj seçenekleri.",
-                Price = 1500,
-                DurationMinutes = 90,
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 8),
-            },
-            new()
-            {
-                Id = 9,
-                BusinessId = 2,
-                CategoryId = 22,
-                Name = "Manikür + Pedikür",
-                Description = "Kalıcı oje dahil komple bakım.",
-                Price = 400,
-                DurationMinutes = 75,
-                IsActive = true,
-                CreatedAt = Utc(2024, 1, 8),
-            },
-            new()
-            {
-                Id = 10,
-                BusinessId = 3,
                 CategoryId = 30,
                 Name = "PT Seansı (1 Saat)",
                 Description = "Birebir kişisel antrenör eşliğinde antrenman.",
@@ -454,8 +176,8 @@ public static class DataSeeder
             },
             new()
             {
-                Id = 11,
-                BusinessId = 3,
+                Id = 6,
+                BusinessId = 2,
                 CategoryId = 30,
                 Name = "Vücut Analizi",
                 Description = "İnbody + program danışmanlığı.",
@@ -466,11 +188,11 @@ public static class DataSeeder
             },
             new()
             {
-                Id = 12,
-                BusinessId = 3,
+                Id = 7,
+                BusinessId = 2,
                 CategoryId = 31,
                 Name = "Yoga Dersi",
-                Description = "Hatha yoga, 60 dakika grup dersi.",
+                Description = "Hatha yoga, 60 dakika.",
                 Price = 250,
                 DurationMinutes = 60,
                 IsActive = true,
@@ -478,99 +200,82 @@ public static class DataSeeder
             },
         };
         await db.Services.AddRangeAsync(services);
-
-        // ── 5. PROVIDER SERVICES ─────────────────────────────────────────────
-        var providerServices = new List<ProviderService>
-        {
-            new() { ProviderId = 1, ServiceId = 1 },
-            new() { ProviderId = 1, ServiceId = 2 },
-            new() { ProviderId = 1, ServiceId = 3 },
-            new() { ProviderId = 1, ServiceId = 4 },
-            new() { ProviderId = 2, ServiceId = 1 },
-            new() { ProviderId = 2, ServiceId = 2 },
-            new() { ProviderId = 2, ServiceId = 4 },
-            new() { ProviderId = 3, ServiceId = 5 },
-            new() { ProviderId = 3, ServiceId = 6 },
-            new() { ProviderId = 3, ServiceId = 7 },
-            new() { ProviderId = 4, ServiceId = 5 },
-            new() { ProviderId = 4, ServiceId = 8 },
-            new() { ProviderId = 4, ServiceId = 9 },
-            new() { ProviderId = 5, ServiceId = 10 },
-            new() { ProviderId = 5, ServiceId = 11 },
-            new() { ProviderId = 5, ServiceId = 12 },
-        };
-        await db.ProviderServices.AddRangeAsync(providerServices);
         await db.SaveChangesAsync();
 
-        // ── 6. TIME SLOTS ─────────────────────────────────────────────────────
+        // ── 5. TIME SLOTS ─────────────────────────────────────────────────────
         var today = DateTime.UtcNow.Date;
         var slots = new List<TimeSlot>();
         int slotId = 1;
 
-        foreach (var providerId in new[] { 1, 2, 3, 4, 5 })
+        // Gelecek 7 gün için slotlar (09:00 - 17:00, saatlik)
+        for (int day = 0; day < 7; day++)
         {
-            for (int day = 0; day < 7; day++)
-            {
-                var date = today.AddDays(day);
-                if (date.DayOfWeek == DayOfWeek.Sunday)
-                    continue;
+            var date = today.AddDays(day);
+            if (date.DayOfWeek == DayOfWeek.Sunday)
+                continue;
 
-                for (int hour = 9; hour < 17; hour++)
-                {
-                    slots.Add(
-                        new TimeSlot
-                        {
-                            Id = slotId++,
-                            ProviderId = providerId,
-                            StartTime = date.AddHours(hour),
-                            EndTime = date.AddHours(hour + 1),
-                            Status = SlotStatus.Available,
-                            CreatedAt = Utc(2024, 1, 1),
-                        }
-                    );
-                }
+            for (int hour = 9; hour < 17; hour++)
+            {
+                slots.Add(
+                    new TimeSlot
+                    {
+                        Id = slotId++,
+                        ProviderId = 1,
+                        StartTime = date.AddHours(hour),
+                        EndTime = date.AddHours(hour + 1),
+                        Status = SlotStatus.Available,
+                        CreatedAt = Utc(2024, 1, 1),
+                    }
+                );
             }
         }
 
-        var pastSlots = new List<TimeSlot>();
-        foreach (
-            var (pid, sid, startOffset) in new[]
-            {
-                (1, slotId, -10),
-                (1, slotId + 1, -7),
-                (2, slotId + 2, -5),
-                (3, slotId + 3, -14),
-                (3, slotId + 4, -3),
-                (5, slotId + 5, -20),
-            }
-        )
+        // Geçmiş slotlar (tamamlanan randevular için)
+        int ps = slotId;
+        var pastSlots = new[]
         {
-            pastSlots.Add(
-                new TimeSlot
-                {
-                    Id = sid,
-                    ProviderId = pid,
-                    StartTime = today.AddDays(startOffset).AddHours(10),
-                    EndTime = today.AddDays(startOffset).AddHours(11),
-                    Status = SlotStatus.Booked,
-                    CreatedAt = Utc(2024, 1, 1),
-                }
-            );
-        }
+            new TimeSlot
+            {
+                Id = ps,
+                ProviderId = 1,
+                StartTime = today.AddDays(-10).AddHours(10),
+                EndTime = today.AddDays(-10).AddHours(11),
+                Status = SlotStatus.Booked,
+                CreatedAt = Utc(2024, 1, 1),
+            },
+            new TimeSlot
+            {
+                Id = ps + 1,
+                ProviderId = 1,
+                StartTime = today.AddDays(-7).AddHours(14),
+                EndTime = today.AddDays(-7).AddHours(15),
+                Status = SlotStatus.Booked,
+                CreatedAt = Utc(2024, 1, 1),
+            },
+            new TimeSlot
+            {
+                Id = ps + 2,
+                ProviderId = 1,
+                StartTime = today.AddDays(-5).AddHours(11),
+                EndTime = today.AddDays(-5).AddHours(12),
+                Status = SlotStatus.Booked,
+                CreatedAt = Utc(2024, 1, 1),
+            },
+        };
         slots.AddRange(pastSlots);
         await db.TimeSlots.AddRangeAsync(slots);
         await db.SaveChangesAsync();
 
-        // ── 7. APPOINTMENTS ───────────────────────────────────────────────────
-        int ps = slotId;
+        // ── 6. APPOINTMENTS ───────────────────────────────────────────────────
         var appointments = new List<Appointment>
         {
+            // Tamamlanan randevular
             new()
             {
                 Id = 1,
                 ReceiverId = 1,
                 ProviderId = 1,
-                ServiceId = 1,
+                ServiceId = 1, // Klasik Saç Kesimi
                 TimeSlotId = ps,
                 PricePaid = 250,
                 Status = AppointmentStatus.Completed,
@@ -583,142 +288,75 @@ public static class DataSeeder
             new()
             {
                 Id = 2,
-                ReceiverId = 2,
+                ReceiverId = 1,
                 ProviderId = 1,
-                ServiceId = 3,
+                ServiceId = 5, // PT Seansı
                 TimeSlotId = ps + 1,
-                PricePaid = 400,
+                PricePaid = 500,
                 Status = AppointmentStatus.Completed,
                 ReceiverNotes = null,
                 CreatedAt = today.AddDays(-7),
-                StartTime = today.AddDays(-7).AddHours(10),
-                EndTime = today.AddDays(-7).AddHours(11),
-                CompletedAt = today.AddDays(-7).AddHours(11),
+                StartTime = today.AddDays(-7).AddHours(14),
+                EndTime = today.AddDays(-7).AddHours(15),
+                CompletedAt = today.AddDays(-7).AddHours(15),
             },
             new()
             {
                 Id = 3,
                 ReceiverId = 1,
-                ProviderId = 2,
-                ServiceId = 2,
+                ProviderId = 1,
+                ServiceId = 3, // Saç + Sakal Paketi
                 TimeSlotId = ps + 2,
-                PricePaid = 300,
+                PricePaid = 400,
                 Status = AppointmentStatus.Completed,
-                ReceiverNotes = "Fade çok kısa olmasın.",
+                ReceiverNotes = "Sakalı düzgün şekillendir.",
                 CreatedAt = today.AddDays(-5),
-                StartTime = today.AddDays(-5).AddHours(10),
-                EndTime = today.AddDays(-5).AddHours(10).AddMinutes(45),
-                CompletedAt = today.AddDays(-5).AddHours(10).AddMinutes(45),
+                StartTime = today.AddDays(-5).AddHours(11),
+                EndTime = today.AddDays(-5).AddHours(12),
+                CompletedAt = today.AddDays(-5).AddHours(12),
             },
+            // Yaklaşan randevu (slot 1)
             new()
             {
                 Id = 4,
-                ReceiverId = 3,
-                ProviderId = 3,
-                ServiceId = 6,
-                TimeSlotId = ps + 3,
-                PricePaid = 600,
-                Status = AppointmentStatus.Completed,
-                ReceiverNotes = null,
-                CreatedAt = today.AddDays(-14),
-                StartTime = today.AddDays(-14).AddHours(10),
-                EndTime = today.AddDays(-14).AddHours(11).AddMinutes(30),
-                CompletedAt = today.AddDays(-14).AddHours(11).AddMinutes(30),
-            },
-            new()
-            {
-                Id = 5,
-                ReceiverId = 4,
-                ProviderId = 3,
-                ServiceId = 5,
-                TimeSlotId = ps + 4,
-                PricePaid = 350,
-                Status = AppointmentStatus.CancelledByReceiver,
-                ReceiverNotes = null,
-                CancellationReason = "Kişisel sebep",
-                CreatedAt = today.AddDays(-3),
-                CancelledAt = today.AddDays(-3).AddHours(15),
-                StartTime = today.AddDays(-3).AddHours(10),
-                EndTime = today.AddDays(-3).AddHours(11),
-            },
-            new()
-            {
-                Id = 6,
-                ReceiverId = 2,
-                ProviderId = 5,
-                ServiceId = 10,
-                TimeSlotId = ps + 5,
-                PricePaid = 500,
-                Status = AppointmentStatus.Completed,
-                ReceiverNotes = null,
-                CreatedAt = today.AddDays(-20),
-                StartTime = today.AddDays(-20).AddHours(10),
-                EndTime = today.AddDays(-20).AddHours(11),
-                CompletedAt = today.AddDays(-20).AddHours(11),
-            },
-            new()
-            {
-                Id = 7,
                 ReceiverId = 1,
                 ProviderId = 1,
-                ServiceId = 2,
+                ServiceId = 2, // Fade Kesim
                 TimeSlotId = 1,
                 PricePaid = 300,
                 Status = AppointmentStatus.Confirmed,
                 ReceiverNotes = null,
                 CreatedAt = today.AddDays(-1),
                 ConfirmedAt = today.AddDays(-1).AddHours(12),
-                StartTime = today.AddDays(1).AddHours(10),
-                EndTime = today.AddDays(1).AddHours(10).AddMinutes(45),
+                StartTime = today.AddDays(1).AddHours(9),
+                EndTime = today.AddDays(1).AddHours(9).AddMinutes(45),
             },
+            // Bekleyen randevu (slot 2)
             new()
             {
-                Id = 8,
-                ReceiverId = 2,
-                ProviderId = 3,
-                ServiceId = 7,
-                TimeSlotId = 50,
-                PricePaid = 900,
+                Id = 5,
+                ReceiverId = 1,
+                ProviderId = 1,
+                ServiceId = 7, // Yoga Dersi
+                TimeSlotId = 2,
+                PricePaid = 250,
                 Status = AppointmentStatus.Pending,
-                ReceiverNotes = "Doğum günü hediyesi.",
+                ReceiverNotes = "İlk dersim olacak.",
                 CreatedAt = today,
-                StartTime = today.AddDays(2).AddHours(14),
-                EndTime = today.AddDays(2).AddHours(16),
-            },
-            new()
-            {
-                Id = 9,
-                ReceiverId = 3,
-                ProviderId = 5,
-                ServiceId = 10,
-                TimeSlotId = 120,
-                PricePaid = 500,
-                Status = AppointmentStatus.Confirmed,
-                ReceiverNotes = "2. seans.",
-                CreatedAt = today.AddDays(-2),
-                ConfirmedAt = today.AddDays(-1),
-                StartTime = today.AddDays(3).AddHours(9),
-                EndTime = today.AddDays(3).AddHours(10),
-            },
-            new()
-            {
-                Id = 10,
-                ReceiverId = 4,
-                ProviderId = 4,
-                ServiceId = 9,
-                TimeSlotId = 180,
-                PricePaid = 400,
-                Status = AppointmentStatus.Pending,
-                ReceiverNotes = null,
-                CreatedAt = today,
-                StartTime = today.AddDays(4).AddHours(11),
-                EndTime = today.AddDays(4).AddHours(12).AddMinutes(15),
+                StartTime = today.AddDays(2).AddHours(9),
+                EndTime = today.AddDays(2).AddHours(10),
             },
         };
         await db.Appointments.AddRangeAsync(appointments);
         await db.SaveChangesAsync();
 
-        // ── 8. REVIEWS ────────────────────────────────────────────────────────
+        // Kullanılan slotları Booked yap
+        var usedSlotIds = new[] { 1, 2 };
+        var usedSlots = await db.TimeSlots.Where(ts => usedSlotIds.Contains(ts.Id)).ToListAsync();
+        usedSlots.ForEach(ts => ts.Status = SlotStatus.Booked);
+        await db.SaveChangesAsync();
+
+        // ── 7. REVIEWS ────────────────────────────────────────────────────────
         var reviews = new List<Review>
         {
             new()
@@ -728,66 +366,43 @@ public static class DataSeeder
                 AuthorId = 1,
                 ProviderId = 1,
                 Rating = 5,
-                Comment = "Tarık bey gerçekten çok iyi! Fade mükemmel oldu, tekrar geleceğim.",
+                Comment = "Emre bey gerçekten çok iyi! Kesim mükemmel oldu, tekrar geleceğim.",
                 CreatedAt = today.AddDays(-9),
+                ProviderReply = "Teşekkürler! Sizi tekrar bekliyoruz.",
+                IsVisible = true,
             },
             new()
             {
                 Id = 2,
                 AppointmentId = 2,
-                AuthorId = 2,
+                AuthorId = 1,
                 ProviderId = 1,
                 Rating = 5,
-                Comment = "Paket harika, saç ve sakal ikisi de çok iyi şekillendi.",
+                Comment = "PT seansı harikaydı, çok profesyonel yaklaşım.",
                 CreatedAt = today.AddDays(-6),
-                ProviderReply = "Teşekkürler! Sizi tekrar bekliyoruz.",
+                IsVisible = true,
             },
             new()
             {
                 Id = 3,
                 AppointmentId = 3,
                 AuthorId = 1,
-                ProviderId = 2,
-                Rating = 4,
-                Comment = "Güzel bir fade oldu, bir dahaki sefere biraz daha kısa deneyeceğim.",
+                ProviderId = 1,
+                Rating = 5,
+                Comment = "Saç ve sakal paketi çok iyi, kesinlikle tavsiye ederim.",
                 CreatedAt = today.AddDays(-4),
-            },
-            new()
-            {
-                Id = 4,
-                AppointmentId = 4,
-                AuthorId = 3,
-                ProviderId = 3,
-                Rating = 5,
-                Comment = "Nilüfer hanım renk konusunda gerçekten uzman. Çok doğal durdu.",
-                CreatedAt = today.AddDays(-13),
-                ProviderReply = "Güzel yorumunuz için teşekkürler 🙏",
-            },
-            new()
-            {
-                Id = 5,
-                AppointmentId = 6,
-                AuthorId = 2,
-                ProviderId = 5,
-                Rating = 5,
-                Comment = "Serkan hoca müthiş! Program çok dengeli, ilk seansta sonuç gördüm.",
-                CreatedAt = today.AddDays(-19),
+                IsVisible = true,
             },
         };
         await db.Reviews.AddRangeAsync(reviews);
+        await db.SaveChangesAsync();
 
-        foreach (var p in providers)
-        {
-            var pReviews = reviews.Where(r => r.ProviderId == p.Id).ToList();
-            if (pReviews.Any())
-            {
-                p.TotalReviews = pReviews.Count;
-                p.AverageRating = pReviews.Average(r => r.Rating);
-            }
-        }
-        db.Providers.UpdateRange(providers);
+        // Provider puanını güncelle
+        provider.TotalReviews = reviews.Count;
+        provider.AverageRating = reviews.Average(r => r.Rating);
+        db.Providers.Update(provider);
 
-        // ── 9. NOTIFICATIONS ─────────────────────────────────────────────────
+        // ── 8. NOTIFICATIONS ─────────────────────────────────────────────────
         var notifications = new List<Notification>
         {
             new()
@@ -795,7 +410,7 @@ public static class DataSeeder
                 Id = 1,
                 UserId = 1,
                 Title = "Randevunuz Onaylandı",
-                Message = "Prestige Barber'daki Fade Kesim randevunuz (yarın 10:00) onaylandı.",
+                Message = "Prestige Barber'daki Fade Kesim randevunuz onaylandı.",
                 Type = "Success",
                 IsRead = false,
                 CreatedAt = today.AddDays(-1),
@@ -805,7 +420,7 @@ public static class DataSeeder
                 Id = 2,
                 UserId = 1,
                 Title = "Randevu Hatırlatması",
-                Message = "Yarın saat 10:00'da Tarık Yıldız ile randevunuz var. Geç kalmayın!",
+                Message = "Yarın saat 09:00'da Emre Şahin ile randevunuz var.",
                 Type = "Info",
                 IsRead = false,
                 CreatedAt = today,
@@ -813,9 +428,9 @@ public static class DataSeeder
             new()
             {
                 Id = 3,
-                UserId = 2,
-                Title = "Yeni Randevu Talebiniz",
-                Message = "Balayage randevunuz Nilüfer Ay tarafından inceleniyor.",
+                UserId = 1,
+                Title = "Randevu Talebiniz Alındı",
+                Message = "Yoga Dersi randevunuz onay bekliyor.",
                 Type = "Info",
                 IsRead = true,
                 CreatedAt = today,
@@ -824,85 +439,34 @@ public static class DataSeeder
             {
                 Id = 4,
                 UserId = 2,
-                Title = "Randevunuz Onaylandı",
-                Message = "Form Fitness'taki PT Seansı randevunuz onaylandı.",
-                Type = "Success",
-                IsRead = true,
-                CreatedAt = today.AddDays(-2),
+                Title = "Yeni Randevu Talebi",
+                Message = "Ahmet Yılmaz Yoga Dersi için randevu talep etti.",
+                Type = "Info",
+                IsRead = false,
+                CreatedAt = today,
             },
             new()
             {
                 Id = 5,
-                UserId = 3,
-                Title = "Randevunuz Onaylandı",
-                Message = "Form Fitness'taki PT Seansı randevunuz (3 gün sonra 09:00) onaylandı.",
-                Type = "Success",
-                IsRead = false,
-                CreatedAt = today.AddDays(-2),
-            },
-            new()
-            {
-                Id = 6,
-                UserId = 4,
-                Title = "Randevu Talebiniz Alındı",
-                Message = "Manikür + Pedikür randevunuz onay bekliyor.",
-                Type = "Info",
-                IsRead = false,
-                CreatedAt = today,
-            },
-            new()
-            {
-                Id = 7,
-                UserId = 5,
-                Title = "Yeni Randevu",
-                Message = "Ahmet Yılmaz, yarın 10:00 için Fade Kesim randevusu oluşturdu.",
-                Type = "Info",
-                IsRead = false,
-                CreatedAt = today.AddDays(-1),
-            },
-            new()
-            {
-                Id = 8,
-                UserId = 5,
-                Title = "Yeni Randevu",
-                Message = "Zeynep Kaya, 2 gün sonra 14:00 için Saç Boyama randevusu talep etti.",
-                Type = "Info",
-                IsRead = true,
-                CreatedAt = today,
-            },
-            new()
-            {
-                Id = 9,
-                UserId = 6,
+                UserId = 2,
                 Title = "Yeni Yorum",
-                Message =
-                    "Nilüfer Ay için 5 yıldızlı yeni bir değerlendirme geldi: 'Renk konusunda uzman'",
+                Message = "Ahmet Yılmaz 5 yıldız bıraktı: 'PT seansı harikaydı'",
                 Type = "Success",
                 IsRead = false,
-                CreatedAt = today.AddDays(-13),
-            },
-            new()
-            {
-                Id = 10,
-                UserId = 7,
-                Title = "Yeni Randevu",
-                Message = "Murat Demir, 3 gün sonra 09:00 için PT Seansı randevusu oluşturdu.",
-                Type = "Info",
-                IsRead = false,
-                CreatedAt = today.AddDays(-2),
+                CreatedAt = today.AddDays(-6),
             },
         };
         await db.Notifications.AddRangeAsync(notifications);
         await db.SaveChangesAsync();
 
-        // ── 10. SEQUENCE RESET ────────────────────────────────────────────────
+        // ── 9. SEQUENCE RESET ─────────────────────────────────────────────────
 #pragma warning disable EF1002
         foreach (
             var table in new[]
             {
                 "Users",
-                "Businesses",
                 "Providers",
+                "Businesses",
                 "Services",
                 "TimeSlots",
                 "Appointments",
@@ -913,13 +477,13 @@ public static class DataSeeder
         {
             await db.Database.ExecuteSqlRawAsync(
                 $"""
-                    SELECT setval(
-                        pg_get_serial_sequence('"{table}"', 'Id'),
-                        (SELECT MAX("Id") FROM "{table}"));
+                SELECT setval(
+                    pg_get_serial_sequence('"{table}"', 'Id'),
+                    (SELECT MAX("Id") FROM "{table}"));
                 """
             );
         }
-#pragma warning restore EF1002p
+#pragma warning restore EF1002
     }
 
     private static DateTime Utc(int y, int m, int d) => new(y, m, d, 0, 0, 0, DateTimeKind.Utc);

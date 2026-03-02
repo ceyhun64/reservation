@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace api.DTOs;
 
+// ── Review ────────────────────────────────────────────────────────────────────
+
 public record ReviewCreateDto(
     [Required] int AppointmentId,
     [Required, Range(1, 5)] int Rating,

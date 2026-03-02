@@ -9,11 +9,10 @@ public class AppDbContext : DbContext
         : base(options) { }
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<Provider> Providers => Set<Provider>();
     public DbSet<Business> Businesses => Set<Business>();
     public DbSet<Category> Categories => Set<Category>();
-    public DbSet<Provider> Providers => Set<Provider>();
     public DbSet<Service> Services => Set<Service>();
-    public DbSet<ProviderService> ProviderServices => Set<ProviderService>();
     public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<Review> Reviews => Set<Review>();
@@ -31,14 +30,14 @@ public class AppDbContext : DbContext
             .HasForeignKey<Provider>(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // User → OwnedBusinesses
-        m.Entity<User>()
-            .HasMany(u => u.OwnedBusinesses)
-            .WithOne(b => b.Owner)
-            .HasForeignKey(b => b.OwnerId)
+        // ── Provider → Businesses (1-many) ──────────────────────
+        m.Entity<Provider>()
+            .HasMany(p => p.Businesses)
+            .WithOne(b => b.Provider)
+            .HasForeignKey(b => b.ProviderId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // ── Category (self-referencing) ─────────────────────────
+        // ── Category (self-referencing) ──────────────────────────
         m.Entity<Category>()
             .HasOne(c => c.ParentCategory)
             .WithMany(c => c.SubCategories)
@@ -47,29 +46,7 @@ public class AppDbContext : DbContext
 
         m.Entity<Category>().HasIndex(c => c.Slug).IsUnique();
 
-        // ── Business → Provider ─────────────────────────────────
-        m.Entity<Provider>()
-            .HasOne(p => p.Business)
-            .WithMany(b => b.Providers)
-            .HasForeignKey(p => p.BusinessId)
-            .OnDelete(DeleteBehavior.SetNull);
-
-        // ── ProviderService (composite PK) ──────────────────────
-        m.Entity<ProviderService>().HasKey(ps => new { ps.ProviderId, ps.ServiceId });
-
-        m.Entity<ProviderService>()
-            .HasOne(ps => ps.Provider)
-            .WithMany(p => p.ProviderServices)
-            .HasForeignKey(ps => ps.ProviderId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        m.Entity<ProviderService>()
-            .HasOne(ps => ps.Service)
-            .WithMany(s => s.ProviderServices)
-            .HasForeignKey(ps => ps.ServiceId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // ── Service ─────────────────────────────────────────────
+        // ── Service ──────────────────────────────────────────────
         m.Entity<Service>().Property(s => s.Price).HasColumnType("decimal(18,2)");
 
         m.Entity<Service>()
@@ -90,14 +67,14 @@ public class AppDbContext : DbContext
         // Receiver → Appointments
         m.Entity<Appointment>()
             .HasOne(a => a.Receiver)
-            .WithMany(u => u.Appointments)
+            .WithMany(u => u.ReceivedAppointments)
             .HasForeignKey(a => a.ReceiverId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Provider → Appointments
         m.Entity<Appointment>()
             .HasOne(a => a.Provider)
-            .WithMany(p => p.Appointments)
+            .WithMany(p => p.GivenAppointments)
             .HasForeignKey(a => a.ProviderId)
             .OnDelete(DeleteBehavior.Restrict);
 
@@ -144,7 +121,7 @@ public class AppDbContext : DbContext
             .HasForeignKey(n => n.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // ── TimeSlot → Provider ─────────────────────────────────
+        // ── TimeSlot → Provider ──────────────────────────────────
         m.Entity<TimeSlot>()
             .HasOne(ts => ts.Provider)
             .WithMany(p => p.TimeSlots)

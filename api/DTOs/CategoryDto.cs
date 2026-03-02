@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace api.DTOs;
 
+// ── Category ─────────────────────────────────────────────────────────────────
+
 public record CategoryDto(
     [Required, MinLength(2)] string Name,
     string Description,

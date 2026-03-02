@@ -17,12 +17,10 @@ public class User
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Receiver: aldığı randevular
-    public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
+    public ICollection<Appointment> ReceivedAppointments { get; set; } = new List<Appointment>();
 
-    // Provider: bu kullanıcıya ait provider profili (varsa)
+    // Provider: bu kullanıcıya ait provider profili (varsa, 1-1)
     public Provider? ProviderProfile { get; set; }
-
-    public ICollection<Business> OwnedBusinesses { get; set; } = new List<Business>();
 
     // Kullanıcının verdiği değerlendirmeler
     public ICollection<Review> Reviews { get; set; } = new List<Review>();

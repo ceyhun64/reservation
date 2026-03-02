@@ -24,26 +24,23 @@ public class AppointmentController : ControllerBase
         _notify = notify;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  GET: Kendi randevularım (müşteri)
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── GET: Müşterinin kendi randevuları ─────────────────────────────────────
     [HttpGet("my")]
     public async Task<ActionResult<ApiResponse<PagedResponse<AppointmentResponseDto>>>> GetMine(
         [FromQuery] AppointmentFilterDto filter
     )
     {
         var userId = GetUserId();
-
         var query = _db
             .Appointments.Include(a => a.Receiver)
-            .Include(a => a.Provider!.User)
-            .Include(a => a.Service!.Category)
+            .Include(a => a.Provider.User)
+            .Include(a => a.Service.Category)
+            .Include(a => a.Service.Business)
             .Include(a => a.Review)
             .Where(a => a.ReceiverId == userId)
             .AsQueryable();
 
         query = ApplyFilters(query, filter);
-
         return Ok(
             ApiResponse<PagedResponse<AppointmentResponseDto>>.Ok(
                 await ToPaged(query, filter.Page, filter.PageSize)
@@ -51,9 +48,7 @@ public class AppointmentController : ControllerBase
         );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  GET: Provider olarak gelen randevular
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── GET: Provider olarak gelen randevular ─────────────────────────────────
     [HttpGet("provider")]
     [Authorize(Roles = "Provider,Admin")]
     public async Task<
@@ -71,14 +66,14 @@ public class AppointmentController : ControllerBase
 
         var query = _db
             .Appointments.Include(a => a.Receiver)
-            .Include(a => a.Provider!.User)
-            .Include(a => a.Service!.Category)
+            .Include(a => a.Provider.User)
+            .Include(a => a.Service.Category)
+            .Include(a => a.Service.Business)
             .Include(a => a.Review)
             .Where(a => a.ProviderId == provider.Id)
             .AsQueryable();
 
         query = ApplyFilters(query, filter);
-
         return Ok(
             ApiResponse<PagedResponse<AppointmentResponseDto>>.Ok(
                 await ToPaged(query, filter.Page, filter.PageSize)
@@ -86,34 +81,31 @@ public class AppointmentController : ControllerBase
         );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  GET: İşletmenin tüm randevuları
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── GET: İşletmenin randevuları ───────────────────────────────────────────
     [HttpGet("business/{businessId}")]
     [Authorize(Roles = "Provider,Admin")]
     public async Task<
         ActionResult<ApiResponse<PagedResponse<AppointmentResponseDto>>>
     > GetByBusiness(int businessId, [FromQuery] AppointmentFilterDto filter)
     {
-        var userId = GetUserId();
         var business = await _db.Businesses.FindAsync(businessId);
         if (business is null)
             return NotFound(
                 ApiResponse<PagedResponse<AppointmentResponseDto>>.Fail("İşletme bulunamadı.")
             );
-        if (business.OwnerId != userId && !User.IsInRole("Admin"))
+        if (!await IsOwnerAsync(business.ProviderId))
             return Forbid();
 
         var query = _db
             .Appointments.Include(a => a.Receiver)
-            .Include(a => a.Provider!.User)
-            .Include(a => a.Service!.Category)
+            .Include(a => a.Provider.User)
+            .Include(a => a.Service.Category)
+            .Include(a => a.Service.Business)
             .Include(a => a.Review)
             .Where(a => a.Service.BusinessId == businessId)
             .AsQueryable();
 
         query = ApplyFilters(query, filter);
-
         return Ok(
             ApiResponse<PagedResponse<AppointmentResponseDto>>.Ok(
                 await ToPaged(query, filter.Page, filter.PageSize)
@@ -121,9 +113,7 @@ public class AppointmentController : ControllerBase
         );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  POST: Randevu oluştur
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── POST: Randevu oluştur ─────────────────────────────────────────────────
     [HttpPost]
     public async Task<ActionResult<ApiResponse<AppointmentResponseDto>>> Create(
         AppointmentCreateDto dto
@@ -140,21 +130,18 @@ public class AppointmentController : ControllerBase
                 ApiResponse<AppointmentResponseDto>.Fail("Bu slot artık müsait değil.")
             );
 
-        // Servis kontrolü
-        var service = await _db.Services.FindAsync(dto.ServiceId);
-        if (service is null || !service.IsActive)
+        // Servis kontrolü - servis bu provider'a ait bir işletmenin hizmeti mi?
+        var service = await _db
+            .Services.Include(s => s.Business)
+            .FirstOrDefaultAsync(s => s.Id == dto.ServiceId && s.IsActive);
+
+        if (service is null)
             return NotFound(ApiResponse<AppointmentResponseDto>.Fail("Hizmet bulunamadı."));
 
-        // Provider bu hizmeti sunuyor mu?
-        var providerService = await _db.ProviderServices.FirstOrDefaultAsync(ps =>
-            ps.ProviderId == dto.ProviderId && ps.ServiceId == dto.ServiceId && ps.IsActive
-        );
-        if (providerService is null)
+        if (service.Business.ProviderId != dto.ProviderId)
             return BadRequest(
                 ApiResponse<AppointmentResponseDto>.Fail("Bu provider söz konusu hizmeti sunmuyor.")
             );
-
-        var price = providerService.CustomPrice ?? service.Price;
 
         var appointment = new Appointment
         {
@@ -164,18 +151,15 @@ public class AppointmentController : ControllerBase
             TimeSlotId = dto.TimeSlotId,
             StartTime = slot.StartTime,
             EndTime = slot.EndTime,
-            PricePaid = price,
+            PricePaid = service.Price,
             ReceiverNotes = dto.ReceiverNotes,
             Status = AppointmentStatus.Pending,
         };
 
-        // Slot'u dolu işaretle
         slot.Status = SlotStatus.Booked;
-
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();
 
-        // Slot - Appointment ilişkisini güncelle
         slot.AppointmentId = appointment.Id;
         await _db.SaveChangesAsync();
 
@@ -200,11 +184,10 @@ public class AppointmentController : ControllerBase
 
         await _db.Entry(appointment).Reference(a => a.Receiver).LoadAsync();
         await _db.Entry(appointment).Reference(a => a.Provider).LoadAsync();
-        if (appointment.Provider is not null)
-            await _db.Entry(appointment.Provider).Reference(p => p.User).LoadAsync();
+        await _db.Entry(appointment.Provider).Reference(p => p.User).LoadAsync();
         await _db.Entry(appointment).Reference(a => a.Service).LoadAsync();
-        if (appointment.Service is not null)
-            await _db.Entry(appointment.Service).Reference(s => s.Category).LoadAsync();
+        await _db.Entry(appointment.Service).Reference(s => s.Category).LoadAsync();
+        await _db.Entry(appointment.Service).Reference(s => s.Business).LoadAsync();
 
         return CreatedAtAction(
             nameof(GetMine),
@@ -216,10 +199,7 @@ public class AppointmentController : ControllerBase
         );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  PATCH: Durum güncelle (Provider)
-    //  Aksiyonlar: confirm | reject | complete | noshow
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── PATCH: Durum güncelle (Provider) ─────────────────────────────────────
     [HttpPatch("{id}/status")]
     [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<AppointmentResponseDto>>> UpdateStatus(
@@ -231,8 +211,6 @@ public class AppointmentController : ControllerBase
         var appt = await LoadAppointment(id);
         if (appt is null)
             return NotFound(ApiResponse<AppointmentResponseDto>.Fail("Randevu bulunamadı."));
-
-        // Sadece kendi randevusunu yönetebilir
         if (appt.Provider.UserId != userId && !User.IsInRole("Admin"))
             return Forbid();
 
@@ -243,25 +221,21 @@ public class AppointmentController : ControllerBase
                 "Randevunuz Onaylandı",
                 $"{appt.Service.Name} randevunuz {appt.StartTime:dd.MM.yyyy HH:mm} için onaylandı."
             ),
-
             "reject" => (
                 AppointmentStatus.Rejected,
                 "Randevunuz Reddedildi",
                 $"{appt.Service.Name} randevunuz reddedildi. Neden: {dto.Reason ?? "-"}"
             ),
-
             "complete" => (
                 AppointmentStatus.Completed,
                 "Randevunuz Tamamlandı",
                 $"{appt.Service.Name} hizmetiniz tamamlandı. Değerlendirme yapmayı unutmayın!"
             ),
-
             "noshow" => (
                 AppointmentStatus.NoShow,
                 "Randevu: Gelmedi",
                 $"{appt.StartTime:dd.MM.yyyy HH:mm} tarihli randevunuz 'Gelmedi' olarak işaretlendi."
             ),
-
             _ => throw new ArgumentException("Geçersiz aksiyon. (confirm/reject/complete/noshow)"),
         };
 
@@ -283,7 +257,7 @@ public class AppointmentController : ControllerBase
         {
             appt.CancelledAt = DateTime.UtcNow;
             if (appt.TimeSlot is not null)
-                appt.TimeSlot.Status = SlotStatus.Available; // Slotu serbest bırak
+                appt.TimeSlot.Status = SlotStatus.Available;
         }
 
         await _db.SaveChangesAsync();
@@ -298,9 +272,7 @@ public class AppointmentController : ControllerBase
         return Ok(ApiResponse<AppointmentResponseDto>.Ok(ToDto(appt)));
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  PATCH: İptal et (Müşteri)
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── PATCH: İptal et (Müşteri) ─────────────────────────────────────────────
     [HttpPatch("{id}/cancel")]
     public async Task<ActionResult<ApiResponse<object?>>> Cancel(int id, [FromBody] CancelDto dto)
     {
@@ -333,9 +305,7 @@ public class AppointmentController : ControllerBase
         return Ok(ApiResponse<object?>.Ok(null, "Randevu iptal edildi."));
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Helpers
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static bool IsValidTransition(AppointmentStatus from, AppointmentStatus to) =>
         (from, to) switch
@@ -350,8 +320,9 @@ public class AppointmentController : ControllerBase
     private async Task<Appointment?> LoadAppointment(int id) =>
         await _db
             .Appointments.Include(a => a.Receiver)
-            .Include(a => a.Provider!.User)
-            .Include(a => a.Service!.Category)
+            .Include(a => a.Provider.User)
+            .Include(a => a.Service.Category)
+            .Include(a => a.Service.Business)
             .Include(a => a.TimeSlot)
             .Include(a => a.Review)
             .FirstOrDefaultAsync(a => a.Id == id);
@@ -403,6 +374,7 @@ public class AppointmentController : ControllerBase
             a.ServiceId,
             a.Service?.Name ?? "",
             a.Service?.Category?.Name ?? "",
+            a.Service?.Business?.Name ?? "",
             a.StartTime,
             a.EndTime,
             a.PricePaid,
@@ -415,6 +387,16 @@ public class AppointmentController : ControllerBase
         );
 
     private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+    private async Task<bool> IsOwnerAsync(int providerId)
+    {
+        if (User.IsInRole("Admin"))
+            return true;
+        var userId = GetUserId();
+        var provider = await _db.Providers.FirstOrDefaultAsync(p => p.UserId == userId);
+        return provider?.Id == providerId;
+    }
 }
+
 
 public record CancelDto(string? Reason);

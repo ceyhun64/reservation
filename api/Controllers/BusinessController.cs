@@ -26,7 +26,10 @@ public class BusinessController : ControllerBase
         [FromQuery] int pageSize = 10
     )
     {
-        var query = _db.Businesses.Include(b => b.Owner).Where(b => b.IsActive).AsQueryable();
+        var query = _db
+            .Businesses.Include(b => b.Provider.User)
+            .Where(b => b.IsActive)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(city))
             query = query.Where(b => b.City.ToLower().Contains(city.ToLower()));
@@ -61,10 +64,33 @@ public class BusinessController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<ApiResponse<BusinessResponseDto>>> GetById(int id)
     {
-        var b = await _db.Businesses.Include(b => b.Owner).FirstOrDefaultAsync(b => b.Id == id);
+        var b = await _db
+            .Businesses.Include(b => b.Provider.User)
+            .FirstOrDefaultAsync(b => b.Id == id);
+
         if (b is null)
             return NotFound(ApiResponse<BusinessResponseDto>.Fail("İşletme bulunamadı."));
         return Ok(ApiResponse<BusinessResponseDto>.Ok(ToDto(b)));
+    }
+
+    /// <summary>Kendi işletmelerini listele (Provider)</summary>
+    [HttpGet("my")]
+    [Authorize(Roles = "Provider,Admin")]
+    public async Task<ActionResult<ApiResponse<List<BusinessResponseDto>>>> GetMine()
+    {
+        var provider = await GetProviderAsync();
+        if (provider is null)
+            return BadRequest(
+                ApiResponse<List<BusinessResponseDto>>.Fail("Provider profili bulunamadı.")
+            );
+
+        var businesses = await _db
+            .Businesses.Include(b => b.Provider.User)
+            .Where(b => b.ProviderId == provider.Id && b.IsActive)
+            .Select(b => ToDto(b))
+            .ToListAsync();
+
+        return Ok(ApiResponse<List<BusinessResponseDto>>.Ok(businesses));
     }
 
     /// <summary>Yeni işletme oluştur</summary>
@@ -72,7 +98,12 @@ public class BusinessController : ControllerBase
     [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<BusinessResponseDto>>> Create(BusinessDto dto)
     {
-        var userId = GetUserId();
+        var provider = await GetProviderAsync();
+        if (provider is null)
+            return BadRequest(
+                ApiResponse<BusinessResponseDto>.Fail("Önce bir provider profili oluşturmalısınız.")
+            );
+
         var b = new Business
         {
             Name = dto.Name,
@@ -82,12 +113,13 @@ public class BusinessController : ControllerBase
             Phone = dto.Phone,
             Email = dto.Email,
             Website = dto.Website,
-            OwnerId = userId,
+            ProviderId = provider.Id,
         };
 
         _db.Businesses.Add(b);
         await _db.SaveChangesAsync();
-        await _db.Entry(b).Reference(x => x.Owner).LoadAsync();
+        await _db.Entry(b).Reference(x => x.Provider).LoadAsync();
+        await _db.Entry(b.Provider).Reference(p => p.User).LoadAsync();
 
         return CreatedAtAction(
             nameof(GetById),
@@ -104,12 +136,13 @@ public class BusinessController : ControllerBase
         BusinessDto dto
     )
     {
-        var userId = GetUserId();
-        var b = await _db.Businesses.Include(b => b.Owner).FirstOrDefaultAsync(b => b.Id == id);
+        var b = await _db
+            .Businesses.Include(b => b.Provider.User)
+            .FirstOrDefaultAsync(b => b.Id == id);
 
         if (b is null)
             return NotFound(ApiResponse<BusinessResponseDto>.Fail("İşletme bulunamadı."));
-        if (b.OwnerId != userId && !User.IsInRole("Admin"))
+        if (!await IsOwnerAsync(b.ProviderId))
             return Forbid();
 
         b.Name = dto.Name;
@@ -129,12 +162,10 @@ public class BusinessController : ControllerBase
     [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {
-        var userId = GetUserId();
         var b = await _db.Businesses.FindAsync(id);
-
         if (b is null)
             return NotFound(ApiResponse<object>.Fail("İşletme bulunamadı."));
-        if (b.OwnerId != userId && !User.IsInRole("Admin"))
+        if (!await IsOwnerAsync(b.ProviderId))
             return Forbid();
 
         b.IsActive = false;
@@ -142,7 +173,23 @@ public class BusinessController : ControllerBase
         return Ok(ApiResponse<object>.Ok(null, "İşletme kaldırıldı."));
     }
 
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
     private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+    private async Task<Provider?> GetProviderAsync()
+    {
+        var userId = GetUserId();
+        return await _db.Providers.FirstOrDefaultAsync(p => p.UserId == userId);
+    }
+
+    private async Task<bool> IsOwnerAsync(int providerId)
+    {
+        if (User.IsInRole("Admin"))
+            return true;
+        var provider = await GetProviderAsync();
+        return provider?.Id == providerId;
+    }
 
     private static BusinessResponseDto ToDto(Business b) =>
         new(
@@ -156,7 +203,7 @@ public class BusinessController : ControllerBase
             b.Website,
             b.LogoUrl,
             b.IsVerified,
-            b.OwnerId,
-            b.Owner?.FullName ?? ""
+            b.ProviderId,
+            b.Provider?.User?.FullName ?? ""
         );
 }

@@ -25,9 +25,8 @@ public class ProviderController : ControllerBase
     {
         var query = _db
             .Providers.Include(p => p.User)
-            .Include(p => p.Business)
-            .Include(p => p.ProviderServices)
-                .ThenInclude(ps => ps.Service)
+            .Include(p => p.Businesses)
+                .ThenInclude(b => b.Services)
                     .ThenInclude(s => s.Category)
             .Where(p => p.IsActive)
             .AsQueryable();
@@ -41,22 +40,22 @@ public class ProviderController : ControllerBase
 
         if (filter.CategoryId.HasValue)
             query = query.Where(p =>
-                p.ProviderServices.Any(ps =>
-                    ps.Service.CategoryId == filter.CategoryId
-                    || ps.Service.Category.ParentCategoryId == filter.CategoryId
+                p.Businesses.Any(b =>
+                    b.Services.Any(s =>
+                        s.CategoryId == filter.CategoryId
+                        || s.Category.ParentCategoryId == filter.CategoryId
+                    )
                 )
             );
 
         if (!string.IsNullOrWhiteSpace(filter.City))
             query = query.Where(p =>
-                p.Business != null && p.Business.City.ToLower().Contains(filter.City.ToLower())
+                p.Businesses.Any(b => b.City.ToLower().Contains(filter.City.ToLower()))
             );
 
         if (filter.MaxPrice.HasValue)
             query = query.Where(p =>
-                p.ProviderServices.Any(ps =>
-                    (ps.CustomPrice ?? ps.Service.Price) <= filter.MaxPrice
-                )
+                p.Businesses.Any(b => b.Services.Any(s => s.Price <= filter.MaxPrice))
             );
 
         if (filter.MinRating.HasValue)
@@ -88,7 +87,7 @@ public class ProviderController : ControllerBase
     {
         var p = await _db
             .Providers.Include(p => p.User)
-            .Include(p => p.Business)
+            .Include(p => p.Businesses)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (p is null)
@@ -96,7 +95,23 @@ public class ProviderController : ControllerBase
         return Ok(ApiResponse<ProviderResponseDto>.Ok(ToDto(p)));
     }
 
-    /// <summary>Provider profili oluştur (kullanıcı kendisi için)</summary>
+    /// <summary>Kendi provider profilim</summary>
+    [HttpGet("me")]
+    [Authorize(Roles = "Provider,Admin")]
+    public async Task<ActionResult<ApiResponse<ProviderResponseDto>>> GetMe()
+    {
+        var userId = GetUserId();
+        var p = await _db
+            .Providers.Include(p => p.User)
+            .Include(p => p.Businesses)
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (p is null)
+            return NotFound(ApiResponse<ProviderResponseDto>.Fail("Provider profili bulunamadı."));
+        return Ok(ApiResponse<ProviderResponseDto>.Ok(ToDto(p)));
+    }
+
+    /// <summary>Provider profili oluştur</summary>
     [HttpPost]
     [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<ProviderResponseDto>>> Create(ProviderDto dto)
@@ -110,17 +125,9 @@ public class ProviderController : ControllerBase
                 )
             );
 
-        if (dto.BusinessId.HasValue)
-        {
-            var biz = await _db.Businesses.FindAsync(dto.BusinessId);
-            if (biz is null)
-                return BadRequest(ApiResponse<ProviderResponseDto>.Fail("İşletme bulunamadı."));
-        }
-
         var provider = new Provider
         {
             UserId = userId,
-            BusinessId = dto.BusinessId,
             Title = dto.Title,
             Bio = dto.Bio,
             AcceptsOnlineBooking = dto.AcceptsOnlineBooking,
@@ -129,8 +136,6 @@ public class ProviderController : ControllerBase
         _db.Providers.Add(provider);
         await _db.SaveChangesAsync();
         await _db.Entry(provider).Reference(p => p.User).LoadAsync();
-        if (provider.BusinessId.HasValue)
-            await _db.Entry(provider).Reference(p => p.Business).LoadAsync();
 
         return CreatedAtAction(
             nameof(GetById),
@@ -150,7 +155,7 @@ public class ProviderController : ControllerBase
         var userId = GetUserId();
         var p = await _db
             .Providers.Include(p => p.User)
-            .Include(p => p.Business)
+            .Include(p => p.Businesses)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (p is null)
@@ -160,73 +165,25 @@ public class ProviderController : ControllerBase
 
         p.Title = dto.Title;
         p.Bio = dto.Bio;
-        p.BusinessId = dto.BusinessId;
         p.AcceptsOnlineBooking = dto.AcceptsOnlineBooking;
 
         await _db.SaveChangesAsync();
         return Ok(ApiResponse<ProviderResponseDto>.Ok(ToDto(p)));
     }
 
-    /// <summary>Provider'a hizmet ekle</summary>
-    [HttpPost("{id}/services")]
-    [Authorize(Roles = "Provider,Admin")]
-    public async Task<ActionResult<ApiResponse<object>>> AddService(
-        int id,
-        [FromBody] AddProviderServiceDto dto
-    )
-    {
-        var userId = GetUserId();
-        var p = await _db.Providers.FindAsync(id);
-        if (p is null)
-            return NotFound(ApiResponse<object>.Fail("Provider bulunamadı."));
-        if (p.UserId != userId && !User.IsInRole("Admin"))
-            return Forbid();
-
-        var service = await _db.Services.FindAsync(dto.ServiceId);
-        if (service is null)
-            return NotFound(ApiResponse<object>.Fail("Hizmet bulunamadı."));
-
-        if (
-            await _db.ProviderServices.AnyAsync(ps =>
-                ps.ProviderId == id && ps.ServiceId == dto.ServiceId
-            )
-        )
-            return BadRequest(ApiResponse<object>.Fail("Bu hizmet zaten eklenmiş."));
-
-        _db.ProviderServices.Add(
-            new ProviderService
-            {
-                ProviderId = id,
-                ServiceId = dto.ServiceId,
-                CustomPrice = dto.CustomPrice,
-                CustomDurationMinutes = dto.CustomDurationMinutes,
-            }
-        );
-
-        await _db.SaveChangesAsync();
-        return Ok(ApiResponse<object>.Ok(null, "Hizmet eklendi."));
-    }
-
-    /// <summary>Provider'ın sunduğu hizmetler</summary>
+    /// <summary>Provider'ın sunduğu tüm hizmetler (tüm işletmelerden)</summary>
     [HttpGet("{id}/services")]
-    public async Task<ActionResult<ApiResponse<List<object>>>> GetServices(int id)
+    public async Task<ActionResult<ApiResponse<List<ServiceResponseDto>>>> GetServices(int id)
     {
         var services = await _db
-            .ProviderServices.Include(ps => ps.Service)
-                .ThenInclude(s => s.Category)
-            .Where(ps => ps.ProviderId == id && ps.IsActive)
-            .Select(ps => new
-            {
-                ps.Service.Id,
-                ps.Service.Name,
-                ps.Service.Description,
-                Price = ps.CustomPrice ?? ps.Service.Price,
-                DurationMinutes = ps.CustomDurationMinutes ?? ps.Service.DurationMinutes,
-                CategoryName = ps.Service.Category.Name,
-            })
+            .Services.Include(s => s.Category)
+            .Include(s => s.Business)
+                .ThenInclude(b => b.Provider.User)
+            .Where(s => s.Business.ProviderId == id && s.IsActive)
+            .Select(s => ToServiceDto(s))
             .ToListAsync();
 
-        return Ok(ApiResponse<List<object>>.Ok(services.Cast<object>().ToList()));
+        return Ok(ApiResponse<List<ServiceResponseDto>>.Ok(services));
     }
 
     private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -236,19 +193,27 @@ public class ProviderController : ControllerBase
             p.Id,
             p.UserId,
             p.User?.FullName ?? "",
-            p.BusinessId,
-            p.Business?.Name,
             p.Title,
             p.Bio,
             p.ProfileImageUrl,
             p.AverageRating,
             p.TotalReviews,
-            p.AcceptsOnlineBooking
+            p.AcceptsOnlineBooking,
+            p.Businesses.Select(b => new BusinessSummaryDto(b.Id, b.Name, b.City)).ToList()
+        );
+
+    private static ServiceResponseDto ToServiceDto(Service s) =>
+        new(
+            s.Id,
+            s.Name,
+            s.Description,
+            s.Price,
+            s.DurationMinutes,
+            s.CategoryId,
+            s.Category?.Name ?? "",
+            s.BusinessId,
+            s.Business?.Name ?? "",
+            s.Business?.ProviderId ?? 0,
+            s.Business?.Provider?.User?.FullName ?? ""
         );
 }
-
-public record AddProviderServiceDto(
-    int ServiceId,
-    decimal? CustomPrice,
-    int? CustomDurationMinutes
-);

@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace api.DTOs;
 
+// ── Appointment ───────────────────────────────────────────────────────────────
+
 public record AppointmentCreateDto(
     [Required] int ProviderId,
     [Required] int ServiceId,
@@ -31,6 +33,7 @@ public record AppointmentResponseDto(
     int ServiceId,
     string ServiceName,
     string CategoryName,
+    string BusinessName,
     DateTime StartTime,
     DateTime EndTime,
     decimal PricePaid,

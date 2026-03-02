@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace api.DTOs;
 
+// ── Service ───────────────────────────────────────────────────────────────────
+
 public record ServiceDto(
     [Required, MinLength(2)] string Name,
     string Description,
@@ -20,5 +22,7 @@ public record ServiceResponseDto(
     int CategoryId,
     string CategoryName,
     int BusinessId,
-    string BusinessName
+    string BusinessName,
+    int ProviderId,
+    string ProviderName
 );

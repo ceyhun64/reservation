@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace api.DTOs;
 
+// ── Business ─────────────────────────────────────────────────────────────────
+
 public record BusinessDto(
     [Required, MinLength(2)] string Name,
     string Description,
@@ -23,6 +25,6 @@ public record BusinessResponseDto(
     string? Website,
     string? LogoUrl,
     bool IsVerified,
-    int OwnerId,
-    string OwnerName
+    int ProviderId,
+    string ProviderName
 );
