@@ -1,185 +1,187 @@
 # Universal Appointment System — Backend API
 
-Her sektöre uygun, çok kullanıcılı evrensel randevu yönetim sistemi.
+> **Professional README for hiring purposes**
+
+A scalable, multi-tenant appointment management system designed for any
+industry—healthcare, beauty, education, fitness, legal services, and more.
+Built with clean architecture, JWT authentication, and PostgreSQL for data
+persistence. This document provides an overview of the project, its
+architecture, setup instructions, API documentation, and usage examples.
 
 ---
 
-## Mimari Özeti
+## 🚀 Project Overview
 
-```
-User (Receiver / Provider / Provider / Admin)
-  │
-  ├─▶ Business (İşletme: Klinik, Kuaför, Spor Salonu...)
-  │     └─▶ Service (Hizmet: Saç Kesimi, Diş Muayenesi...)
-  │               └─▶ Category (Kategori ağacı: Sağlık > Klinik > Dermatoloji)
-  │
-  ├─▶ Provider (Randevu Veren: Doktor, Kuaför, Trainer...)
-  │     ├─▶ ProviderService (Sunduğu hizmetler, özel fiyat/süre)
-  │     ├─▶ TimeSlot (Müsait zaman dilimleri)
-  │     └─▶ Review (Aldığı değerlendirmeler)
-  │
-  └─▶ Appointment (Randevu: Receiver + Provider + Service + TimeSlot)
-        ├─▶ Durum: Pending → Confirmed → Completed
-        │                └→ Rejected / CancelledByReceiver / NoShow
-        └─▶ Review (Tamamlanan randevuya 1 yorum)
+The backend is an ASP.NET Core Web API that exposes endpoints for
+registering users, managing providers and businesses, booking and
+tracking appointments, and handling notifications and reviews. The API is
+fully documented using Swagger and supports role-based access control.
+
+**Technologies & Tools**
+
+- .NET 8 (ASP.NET Core Web API)
+- Entity Framework Core with Npgsql (PostgreSQL)
+- JWT Authentication
+- Swagger / OpenAPI
+- xUnit & Moq for unit and integration tests
+- Docker (optional for containerized deployment)
+
+---
+
+## 🏗 Architecture Diagram
+
+```mermaid
+flowchart TB
+    User[User]
+    subgraph Domain
+      Business --> Service --> Category
+      Provider --> ProviderService
+      Provider --> TimeSlot
+      Provider --> Review
+      Appointment --> OrderStatus[Status]
+      Appointment --> ReviewA[Review]
+    end
+    User --> Appointment
+    User --> Provider
+    User --> Business
+
+    style Domain fill:#f9f,stroke:#333,stroke-width:1px
 ```
 
 ---
 
-## Kurulum
+## 🛠 Setup & Installation
+
+1. Clone the repository and navigate to the `api` folder:
+   ```bash
+   git clone <repo-url>
+   cd api
+   ```
+2. Restore packages and apply migrations:
+   ```bash
+   dotnet restore
+   dotnet ef migrations add InitialCreate
+   dotnet ef database update
+   ```
+3. Configure `appsettings.json` with your PostgreSQL connection string
+   and a strong `Jwt:Key`.
+4. Run the application:
+   ```bash
+   dotnet run
+   ```
+5. Open Swagger UI at `http://localhost:5000` for interactive API
+   exploration.
+
+> Tip: Use environment-specific configuration (Development/Production)
+> via `appsettings.Development.json`.
+
+---
+
+## 🔐 Roles & Permissions
+
+| Role     | Description                                              |
+| -------- | -------------------------------------------------------- |
+| Receiver | Book appointments, cancel, leave reviews                 |
+| Provider | Create time slots, manage appointments, reply to reviews |
+| Business | Manage business profile and services                     |
+| Admin    | Full access including moderation and seed                |
+| data     |
+
+---
+
+## 📚 API Endpoints (Selected)
+
+Below is a high-level summary; use Swagger for full details.
+
+### **Authentication**
+
+| Method | Endpoint             | Description                |
+| ------ | -------------------- | -------------------------- |
+| POST   | `/api/auth/register` | Register new user          |
+| POST   | `/api/auth/login`    | Authenticate and issue JWT |
+
+### **Categories**
+
+| Method | Endpoint               | Description             |
+| ------ | ---------------------- | ----------------------- |
+| GET    | `/api/categories`      | Get full category tree  |
+| GET    | `/api/categories/{id}` | Get category by id      |
+| POST   | `/api/categories`      | Create category (Admin) |
+
+### **Businesses**
+
+| Method | Endpoint               | Description                |
+| ------ | ---------------------- | -------------------------- |
+| GET    | `/api/businesses`      | Search & filter            |
+| GET    | `/api/businesses/{id}` | Get details                |
+| POST   | `/api/businesses`      | Create business (Provider) |
+| PUT    | `/api/businesses/{id}` | Update business            |
+| DELETE | `/api/businesses/{id}` | Soft delete                |
+
+_(Full endpoint list continues in the Swagger UI.)_
+
+---
+
+## 🧪 Example Workflow
+
+1. Provider registers → `POST /api/auth/register` (role=Provider)
+2. Provider creates a business → `POST /api/businesses`
+3. Provider adds a service → `POST /api/services`
+4. Provider sets availability → `POST /api/timeslots/provider/{id}/bulk`
+5. Receiver registers → `POST /api/auth/register` (role=Receiver)
+6. Receiver books appointment → `POST /api/appointments`
+7. Provider confirms → `PATCH /api/appointments/{id}/status`
+8. After completion, receiver reviews provider
+
+---
+
+## 🎯 Seed Data
+
+When the application starts, the following categories are seeded:
+
+- **Health** (Clinic, Dental, Psychology, Physiotherapy)
+- **Beauty** (Hairdresser, Makeup, Nail Art)
+- **Fitness** (Personal Trainer, Yoga)
+- **Entertainment** (Escape Room, Bowling)
+- **Education**
+- **Legal & Consulting**
+
+---
+
+## 🧩 Testing
+
+Unit and integration tests reside in `api.Tests`.
+Run them with:
 
 ```bash
-# 1. Proje oluştur
-dotnet new webapi -n api --no-https false
-cd api
-
-# 2. Paketler
-dotnet add package Microsoft.EntityFrameworkCore.Design
-dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
-dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
-dotnet add package BCrypt.Net-Next
-dotnet add package Swashbuckle.AspNetCore
-
-# 3. appsettings.json → DB bağlantısını ve JWT secret'ı güncelle
-
-# 4. Migration
-dotnet ef migrations add InitialCreate
-dotnet ef database update
-
-# 5. Çalıştır
-dotnet run
-# Swagger: http://localhost:5000
+cd api.Tests
+dotnet test
 ```
 
----
-
-## Roller
-
-| Rol        | Yetki                                      |
-| ---------- | ------------------------------------------ |
-| `Receiver` | Randevu al, iptal et, değerlendirme yaz    |
-| `Provider` | Slot oluştur, randevuları yönet, cevap ver |
-| `Provider` | İşletme + hizmet yönetimi, provider ekleme |
-| `Admin`    | Her şey + moderasyon                       |
+Coverage reports can be generated with coverlet or similar tools.
 
 ---
 
-## API Endpointleri
+## 🚀 Deployment
 
-### Auth
-
-| Method | Endpoint             | Açıklama      |
-| ------ | -------------------- | ------------- |
-| POST   | `/api/auth/register` | Kayıt         |
-| POST   | `/api/auth/login`    | Giriş, JWT al |
-
-### Kategoriler
-
-| Method | Endpoint               | Açıklama                  |
-| ------ | ---------------------- | ------------------------- |
-| GET    | `/api/categories`      | Hiyerarşik kategori ağacı |
-| GET    | `/api/categories/{id}` | Kategori detayı           |
-| POST   | `/api/categories`      | Yeni kategori (Admin)     |
-
-### İşletmeler
-
-| Method | Endpoint                               | Açıklama           |
-| ------ | -------------------------------------- | ------------------ |
-| GET    | `/api/businesses?city=&keyword=&page=` | Filtreli liste     |
-| GET    | `/api/businesses/{id}`                 | Detay              |
-| POST   | `/api/businesses`                      | Oluştur (Provider) |
-| PUT    | `/api/businesses/{id}`                 | Güncelle           |
-| DELETE | `/api/businesses/{id}`                 | Sil (soft delete)  |
-
-### Provider'lar
-
-| Method | Endpoint                                                         | Açıklama          |
-| ------ | ---------------------------------------------------------------- | ----------------- |
-| GET    | `/api/providers?keyword=&categoryId=&city=&maxPrice=&minRating=` | Arama             |
-| GET    | `/api/providers/{id}`                                            | Detay             |
-| POST   | `/api/providers`                                                 | Profil oluştur    |
-| PUT    | `/api/providers/{id}`                                            | Güncelle          |
-| GET    | `/api/providers/{id}/services`                                   | Sunduğu hizmetler |
-| POST   | `/api/providers/{id}/services`                                   | Hizmet ekle       |
-
-### Hizmetler
-
-| Method | Endpoint                                         | Açıklama           |
-| ------ | ------------------------------------------------ | ------------------ |
-| GET    | `/api/services?categoryId=&businessId=&keyword=` | Filtreli liste     |
-| GET    | `/api/services/{id}`                             | Detay              |
-| POST   | `/api/services`                                  | Oluştur (Provider) |
-| PUT    | `/api/services/{id}`                             | Güncelle           |
-| DELETE | `/api/services/{id}`                             | Sil                |
-
-### Zaman Slotları
-
-| Method | Endpoint                             | Açıklama           |
-| ------ | ------------------------------------ | ------------------ |
-| GET    | `/api/timeslots/provider/{id}?date=` | Müsait slotlar     |
-| POST   | `/api/timeslots/provider/{id}`       | Tekli slot ekle    |
-| POST   | `/api/timeslots/provider/{id}/bulk`  | Toplu slot oluştur |
-| PATCH  | `/api/timeslots/{slotId}/block`      | Slotu bloke et     |
-| DELETE | `/api/timeslots/{slotId}`            | Slot sil           |
-
-### Randevular
-
-| Method | Endpoint                          | Açıklama                                        |
-| ------ | --------------------------------- | ----------------------------------------------- |
-| GET    | `/api/appointments/my`            | Kendi randevularım                              |
-| GET    | `/api/appointments/provider`      | Provider olarak gelenler                        |
-| GET    | `/api/appointments/business/{id}` | İşletme randevuları                             |
-| POST   | `/api/appointments`               | Randevu al                                      |
-| PATCH  | `/api/appointments/{id}/status`   | Durum güncelle (confirm/reject/complete/noshow) |
-| PATCH  | `/api/appointments/{id}/cancel`   | İptal et (müşteri)                              |
-
-### Değerlendirmeler
-
-| Method | Endpoint                     | Açıklama             |
-| ------ | ---------------------------- | -------------------- |
-| GET    | `/api/reviews/provider/{id}` | Provider yorumları   |
-| POST   | `/api/reviews`               | Yorum yaz (müşteri)  |
-| PATCH  | `/api/reviews/{id}/reply`    | Cevap ver (provider) |
-| PATCH  | `/api/reviews/{id}/hide`     | Gizle (Admin)        |
-
-### Bildirimler
-
-| Method | Endpoint                             | Açıklama        |
-| ------ | ------------------------------------ | --------------- |
-| GET    | `/api/notifications?unreadOnly=true` | Bildirimler     |
-| PATCH  | `/api/notifications/{id}/read`       | Okundu işaretle |
-| PATCH  | `/api/notifications/read-all`        | Tümünü oku      |
+Use Docker for containerization or deploy directly to a cloud provider
+(e.g. Azure App Service, AWS Elastic Beanstalk) with a PostgreSQL
+database.
 
 ---
 
-## Örnek Kullanım Akışı
+## 📄 License
 
-```
-1. Provider kayıt → POST /api/auth/register (Role: Provider)
-2. İşletme oluştur    → POST /api/businesses
-3. Hizmet ekle        → POST /api/services (categoryId ile kategori seç)
-4. Provider kayıt     → POST /api/auth/register (Role: Provider)
-5. Provider profil    → POST /api/providers (businessId opsiyonel)
-6. Hizmet bağla       → POST /api/providers/{id}/services
-7. Slot oluştur       → POST /api/timeslots/provider/{id}/bulk
-8. Müşteri kayıt      → POST /api/auth/register (Role: Receiver)
-9. Provider ara       → GET  /api/providers?categoryId=10&city=Istanbul
-10. Slot bak          → GET  /api/timeslots/provider/{id}?date=2025-06-15
-11. Randevu al        → POST /api/appointments
-12. Provider onayla   → PATCH /api/appointments/{id}/status {"action":"confirm"}
-13. Tamamla           → PATCH /api/appointments/{id}/status {"action":"complete"}
-14. Müşteri yorum     → POST /api/reviews
-```
+This project is licensed under the MIT License. See `LICENSE` for details.
 
 ---
 
-## Seed Kategoriler
+## 🤝 Contributing
 
-Uygulama başlatıldığında otomatik eklenir:
+Contributions are welcome! Please fork the repo, create a feature branch,
+and submit a pull request. Maintain coding standards, include tests, and
+update documentation as needed.
 
-- **Sağlık** → Klinik, Diş Hekimi, Psikolog, Fizyoterapi
-- **Güzellik** → Kuaför, Makyaj, Nail Art
-- **Spor & Fitness** → Personal Trainer, Yoga
-- **Eğlence** → Escape Room, Bowling, Oyun Salonu
-- **Eğitim**
-- **Hukuk & Danışmanlık**
+_Thank you for reviewing this backend API. I built it to demonstrate clean
+architecture, adherence to SOLID principles, and real-world API design—a
+strong showcase for technical interviews._
