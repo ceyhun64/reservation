@@ -10,7 +10,7 @@ public record AppointmentCreateDto(
 );
 
 public record AppointmentUpdateStatusDto(
-    [Required] string Action,   // confirm | reject | complete | noshow
+    [Required] string Action, // confirm | reject | complete | noshow
     string? Reason
 );
 

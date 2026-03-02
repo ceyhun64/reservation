@@ -1,11 +1,11 @@
 //api.Tests/Unit/BusinessControllerUnitTests.cs
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using api.Controllers;
 using api.Data;
 using api.DTOs;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace api.Tests.Unit;
 
@@ -19,19 +19,28 @@ public class BusinessControllerUnitTests
         return new AppDbContext(options);
     }
 
-    private BusinessController CreateController(AppDbContext db, int userId = 1, string role = "Provider")
+    private BusinessController CreateController(
+        AppDbContext db,
+        int userId = 1,
+        string role = "Provider"
+    )
     {
         var controller = new BusinessController(db);
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext
             {
-                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
-                    new Claim(ClaimTypes.Role, role)
-                }, "test"))
-            }
+                User = new ClaimsPrincipal(
+                    new ClaimsIdentity(
+                        new[]
+                        {
+                            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+                            new Claim(ClaimTypes.Role, role),
+                        },
+                        "test"
+                    )
+                ),
+            },
         };
         return controller;
     }
@@ -57,13 +66,15 @@ public class BusinessControllerUnitTests
         var db = CreateInMemoryDb();
         var controller = CreateController(db);
 
-        await controller.Create(new BusinessDto
-        {
-            Name = "Test",
-            Description = "Desc",
-            Address = "Addr",
-            Phone = "123"
-        });
+        await controller.Create(
+            new BusinessDto
+            {
+                Name = "Test",
+                Description = "Desc",
+                Address = "Addr",
+                Phone = "123",
+            }
+        );
 
         var result = await controller.GetById(1);
         Assert.IsType<OkObjectResult>(result);
@@ -87,13 +98,15 @@ public class BusinessControllerUnitTests
         var db = CreateInMemoryDb();
         var controller = CreateController(db, userId: 1);
 
-        var result = await controller.Create(new BusinessDto
-        {
-            Name = "Test İşletme",
-            Description = "Açıklama",
-            Address = "Adres",
-            Phone = "05001234567"
-        });
+        var result = await controller.Create(
+            new BusinessDto
+            {
+                Name = "Test İşletme",
+                Description = "Açıklama",
+                Address = "Adres",
+                Phone = "05001234567",
+            }
+        );
 
         Assert.IsType<CreatedAtActionResult>(result);
     }
@@ -104,13 +117,15 @@ public class BusinessControllerUnitTests
         var db = CreateInMemoryDb();
         var controller = CreateController(db, userId: 1);
 
-        await controller.Create(new BusinessDto
-        {
-            Name = "Test İşletme",
-            Description = "Açıklama",
-            Address = "Adres",
-            Phone = "05001234567"
-        });
+        await controller.Create(
+            new BusinessDto
+            {
+                Name = "Test İşletme",
+                Description = "Açıklama",
+                Address = "Adres",
+                Phone = "05001234567",
+            }
+        );
 
         Assert.Equal(1, db.Businesses.Count());
         Assert.Equal("Test İşletme", db.Businesses.First().Name);
@@ -122,13 +137,15 @@ public class BusinessControllerUnitTests
         var db = CreateInMemoryDb();
         var controller = CreateController(db, userId: 42);
 
-        await controller.Create(new BusinessDto
-        {
-            Name = "Test",
-            Description = "Desc",
-            Address = "Addr",
-            Phone = "123"
-        });
+        await controller.Create(
+            new BusinessDto
+            {
+                Name = "Test",
+                Description = "Desc",
+                Address = "Addr",
+                Phone = "123",
+            }
+        );
 
         Assert.Equal(42, db.Businesses.First().OwnerId);
     }
@@ -141,21 +158,26 @@ public class BusinessControllerUnitTests
         var db = CreateInMemoryDb();
         var controller = CreateController(db, userId: 1);
 
-        await controller.Create(new BusinessDto
-        {
-            Name = "Eski",
-            Description = "Desc",
-            Address = "Addr",
-            Phone = "123"
-        });
+        await controller.Create(
+            new BusinessDto
+            {
+                Name = "Eski",
+                Description = "Desc",
+                Address = "Addr",
+                Phone = "123",
+            }
+        );
 
-        var result = await controller.Update(1, new BusinessDto
-        {
-            Name = "Yeni",
-            Description = "Desc",
-            Address = "Addr",
-            Phone = "123"
-        });
+        var result = await controller.Update(
+            1,
+            new BusinessDto
+            {
+                Name = "Yeni",
+                Description = "Desc",
+                Address = "Addr",
+                Phone = "123",
+            }
+        );
 
         Assert.IsType<OkObjectResult>(result);
         Assert.Equal("Yeni", db.Businesses.First().Name);
@@ -167,13 +189,16 @@ public class BusinessControllerUnitTests
         var db = CreateInMemoryDb();
         var controller = CreateController(db, userId: 1);
 
-        var result = await controller.Update(9999, new BusinessDto
-        {
-            Name = "Yeni",
-            Description = "Desc",
-            Address = "Addr",
-            Phone = "123"
-        });
+        var result = await controller.Update(
+            9999,
+            new BusinessDto
+            {
+                Name = "Yeni",
+                Description = "Desc",
+                Address = "Addr",
+                Phone = "123",
+            }
+        );
 
         Assert.IsType<NotFoundObjectResult>(result);
     }
@@ -183,22 +208,27 @@ public class BusinessControllerUnitTests
     {
         var db = CreateInMemoryDb();
         var owner = CreateController(db, userId: 1);
-        await owner.Create(new BusinessDto
-        {
-            Name = "Test",
-            Description = "Desc",
-            Address = "Addr",
-            Phone = "123"
-        });
+        await owner.Create(
+            new BusinessDto
+            {
+                Name = "Test",
+                Description = "Desc",
+                Address = "Addr",
+                Phone = "123",
+            }
+        );
 
         var otherUser = CreateController(db, userId: 99);
-        var result = await otherUser.Update(1, new BusinessDto
-        {
-            Name = "Hack",
-            Description = "Desc",
-            Address = "Addr",
-            Phone = "123"
-        });
+        var result = await otherUser.Update(
+            1,
+            new BusinessDto
+            {
+                Name = "Hack",
+                Description = "Desc",
+                Address = "Addr",
+                Phone = "123",
+            }
+        );
 
         Assert.IsType<ForbidResult>(result);
     }
@@ -211,13 +241,15 @@ public class BusinessControllerUnitTests
         var db = CreateInMemoryDb();
         var controller = CreateController(db, userId: 1);
 
-        await controller.Create(new BusinessDto
-        {
-            Name = "Test",
-            Description = "Desc",
-            Address = "Addr",
-            Phone = "123"
-        });
+        await controller.Create(
+            new BusinessDto
+            {
+                Name = "Test",
+                Description = "Desc",
+                Address = "Addr",
+                Phone = "123",
+            }
+        );
 
         var result = await controller.Delete(1);
 
@@ -240,13 +272,15 @@ public class BusinessControllerUnitTests
     {
         var db = CreateInMemoryDb();
         var owner = CreateController(db, userId: 1);
-        await owner.Create(new BusinessDto
-        {
-            Name = "Test",
-            Description = "Desc",
-            Address = "Addr",
-            Phone = "123"
-        });
+        await owner.Create(
+            new BusinessDto
+            {
+                Name = "Test",
+                Description = "Desc",
+                Address = "Addr",
+                Phone = "123",
+            }
+        );
 
         var otherUser = CreateController(db, userId: 99);
         var result = await otherUser.Delete(1);

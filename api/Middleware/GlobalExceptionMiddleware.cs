@@ -9,7 +9,10 @@ public class GlobalExceptionMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<GlobalExceptionMiddleware> _logger;
 
-    public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
+    public GlobalExceptionMiddleware(
+        RequestDelegate next,
+        ILogger<GlobalExceptionMiddleware> logger
+    )
     {
         _next = next;
         _logger = logger;
@@ -33,23 +36,24 @@ public class GlobalExceptionMiddleware
         var statusCode = ex switch
         {
             UnauthorizedAccessException => HttpStatusCode.Forbidden,
-            KeyNotFoundException        => HttpStatusCode.NotFound,
-            ArgumentException           => HttpStatusCode.BadRequest,
-            InvalidOperationException   => HttpStatusCode.BadRequest,
-            _                           => HttpStatusCode.InternalServerError
+            KeyNotFoundException => HttpStatusCode.NotFound,
+            ArgumentException => HttpStatusCode.BadRequest,
+            InvalidOperationException => HttpStatusCode.BadRequest,
+            _ => HttpStatusCode.InternalServerError,
         };
 
         var response = ApiResponse<object>.Fail(
-            statusCode == HttpStatusCode.InternalServerError
-                ? "Sunucu hatası oluştu."
-                : ex.Message
+            statusCode == HttpStatusCode.InternalServerError ? "Sunucu hatası oluştu." : ex.Message
         );
 
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)statusCode;
 
         return context.Response.WriteAsync(
-            JsonSerializer.Serialize(response, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
+            JsonSerializer.Serialize(
+                response,
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }
+            )
         );
     }
 }

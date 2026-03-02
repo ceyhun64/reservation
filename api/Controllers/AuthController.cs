@@ -1,6 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -8,6 +5,9 @@ using api.Common;
 using api.Data;
 using api.DTOs;
 using api.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 namespace api.Controllers;
 
@@ -29,10 +29,12 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Register(RegisterDto dto)
     {
         if (await _db.Users.AnyAsync(u => u.Email == dto.Email))
-            return BadRequest(ApiResponse<AuthResponseDto>.Fail("Bu e-posta adresi zaten kayıtlı."));
+            return BadRequest(
+                ApiResponse<AuthResponseDto>.Fail("Bu e-posta adresi zaten kayıtlı.")
+            );
 
         var validRoles = new[] { "Receiver", "Provider", "Admin" };
-         if (!validRoles.Contains(dto.Role))
+        if (!validRoles.Contains(dto.Role))
             return BadRequest(ApiResponse<AuthResponseDto>.Fail("Geçersiz rol."));
 
         var user = new User
@@ -41,17 +43,19 @@ public class AuthController : ControllerBase
             Email = dto.Email,
             Phone = dto.Phone,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-            Role = dto.Role
+            Role = dto.Role,
         };
 
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
 
         var token = GenerateToken(user);
-        return Ok(ApiResponse<AuthResponseDto>.Ok(
-            new AuthResponseDto(token, user.Role, user.FullName, user.Id),
-            "Kayıt başarılı."
-        ));
+        return Ok(
+            ApiResponse<AuthResponseDto>.Ok(
+                new AuthResponseDto(token, user.Role, user.FullName, user.Id),
+                "Kayıt başarılı."
+            )
+        );
     }
 
     /// <summary>Giriş yap, JWT al</summary>
@@ -70,9 +74,11 @@ public class AuthController : ControllerBase
         await _db.SaveChangesAsync();
 
         var token = GenerateToken(user);
-        return Ok(ApiResponse<AuthResponseDto>.Ok(
-            new AuthResponseDto(token, user.Role, user.FullName, user.Id)
-        ));
+        return Ok(
+            ApiResponse<AuthResponseDto>.Ok(
+                new AuthResponseDto(token, user.Role, user.FullName, user.Id)
+            )
+        );
     }
 
     private string GenerateToken(User user)
@@ -83,9 +89,9 @@ public class AuthController : ControllerBase
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email,          user.Email),
-            new Claim(ClaimTypes.Role,           user.Role),
-            new Claim(ClaimTypes.Name,           user.FullName)
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Role, user.Role),
+            new Claim(ClaimTypes.Name, user.FullName),
         };
 
         var token = new JwtSecurityToken(

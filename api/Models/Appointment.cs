@@ -28,8 +28,8 @@ public class Appointment
     //                          └→ Rejected
     public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
 
-    public string? ReceiverNotes { get; set; }      // Müşteri notu
-    public string? ProviderNotes { get; set; }      // Provider notu (interne)
+    public string? ReceiverNotes { get; set; } // Müşteri notu
+    public string? ProviderNotes { get; set; } // Provider notu (interne)
     public string? CancellationReason { get; set; }
 
     // İlgili zaman slotu
@@ -47,11 +47,11 @@ public class Appointment
 
 public enum AppointmentStatus
 {
-    Pending,                // Bekliyor (onay bekleniyor)
-    Confirmed,              // Onaylandı
-    Completed,              // Tamamlandı
-    CancelledByReceiver,    // Müşteri iptal etti
-    CancelledByProvider,    // Provider iptal etti
-    Rejected,               // Provider reddetti
-    NoShow                  // Müşteri gelmedi
+    Pending, // Bekliyor (onay bekleniyor)
+    Confirmed, // Onaylandı
+    Completed, // Tamamlandı
+    CancelledByReceiver, // Müşteri iptal etti
+    CancelledByProvider, // Provider iptal etti
+    Rejected, // Provider reddetti
+    NoShow, // Müşteri gelmedi
 }

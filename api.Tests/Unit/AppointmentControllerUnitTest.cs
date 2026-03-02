@@ -1,12 +1,12 @@
 //api.Tests/Unit/AppointmentControllerUnitTests.cs
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using api.Controllers;
 using api.Data;
 using api.DTOs;
 using api.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace api.Tests.Unit;
 
@@ -20,24 +20,36 @@ public class AppointmentControllerUnitTests
         return new AppDbContext(options);
     }
 
-    private AppointmentController CreateController(AppDbContext db, int userId = 1, string role = "Receiver")
+    private AppointmentController CreateController(
+        AppDbContext db,
+        int userId = 1,
+        string role = "Receiver"
+    )
     {
         var controller = new AppointmentController(db);
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext
             {
-                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
-                    new Claim(ClaimTypes.Role, role)
-                }, "test"))
-            }
+                User = new ClaimsPrincipal(
+                    new ClaimsIdentity(
+                        new[]
+                        {
+                            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+                            new Claim(ClaimTypes.Role, role),
+                        },
+                        "test"
+                    )
+                ),
+            },
         };
         return controller;
     }
 
-    private async Task<(int businessId, int serviceId)> CreateBusinessAndService(AppDbContext db, int ownerId = 1)
+    private async Task<(int businessId, int serviceId)> CreateBusinessAndService(
+        AppDbContext db,
+        int ownerId = 1
+    )
     {
         var business = new Business
         {
@@ -45,7 +57,7 @@ public class AppointmentControllerUnitTests
             Description = "Desc",
             Address = "Addr",
             Phone = "123",
-            OwnerId = ownerId
+            OwnerId = ownerId,
         };
         db.Businesses.Add(business);
         await db.SaveChangesAsync();
@@ -56,7 +68,7 @@ public class AppointmentControllerUnitTests
             Description = "Desc",
             Price = 100,
             DurationMinutes = 30,
-            BusinessId = business.Id
+            BusinessId = business.Id,
         };
         db.Services.Add(service);
         await db.SaveChangesAsync();
@@ -73,12 +85,14 @@ public class AppointmentControllerUnitTests
         var (_, serviceId) = await CreateBusinessAndService(db);
         var controller = CreateController(db, userId: 1);
 
-        var result = await controller.Create(new AppointmentDto
-        {
-            ServiceId = serviceId,
-            StartTime = DateTime.UtcNow.AddDays(1),
-            Notes = "Test"
-        });
+        var result = await controller.Create(
+            new AppointmentDto
+            {
+                ServiceId = serviceId,
+                StartTime = DateTime.UtcNow.AddDays(1),
+                Notes = "Test",
+            }
+        );
 
         Assert.IsType<CreatedAtActionResult>(result);
     }
@@ -89,12 +103,14 @@ public class AppointmentControllerUnitTests
         var db = CreateInMemoryDb();
         var controller = CreateController(db, userId: 1);
 
-        var result = await controller.Create(new AppointmentDto
-        {
-            ServiceId = 9999,
-            StartTime = DateTime.UtcNow.AddDays(1),
-            Notes = ""
-        });
+        var result = await controller.Create(
+            new AppointmentDto
+            {
+                ServiceId = 9999,
+                StartTime = DateTime.UtcNow.AddDays(1),
+                Notes = "",
+            }
+        );
 
         Assert.IsType<NotFoundObjectResult>(result);
     }
@@ -107,19 +123,23 @@ public class AppointmentControllerUnitTests
         var controller = CreateController(db, userId: 1);
         var startTime = DateTime.UtcNow.AddDays(1);
 
-        await controller.Create(new AppointmentDto
-        {
-            ServiceId = serviceId,
-            StartTime = startTime,
-            Notes = "İlk"
-        });
+        await controller.Create(
+            new AppointmentDto
+            {
+                ServiceId = serviceId,
+                StartTime = startTime,
+                Notes = "İlk",
+            }
+        );
 
-        var result = await controller.Create(new AppointmentDto
-        {
-            ServiceId = serviceId,
-            StartTime = startTime,
-            Notes = "Çakışan"
-        });
+        var result = await controller.Create(
+            new AppointmentDto
+            {
+                ServiceId = serviceId,
+                StartTime = startTime,
+                Notes = "Çakışan",
+            }
+        );
 
         Assert.IsType<BadRequestObjectResult>(result);
     }
@@ -132,12 +152,14 @@ public class AppointmentControllerUnitTests
         var controller = CreateController(db, userId: 1);
         var startTime = DateTime.UtcNow.AddDays(1);
 
-        await controller.Create(new AppointmentDto
-        {
-            ServiceId = serviceId,
-            StartTime = startTime,
-            Notes = ""
-        });
+        await controller.Create(
+            new AppointmentDto
+            {
+                ServiceId = serviceId,
+                StartTime = startTime,
+                Notes = "",
+            }
+        );
 
         var appointment = db.Appointments.First();
         Assert.Equal(startTime.AddMinutes(30), appointment.EndTime);
@@ -163,8 +185,12 @@ public class AppointmentControllerUnitTests
         var user1 = CreateController(db, userId: 1);
         var user2 = CreateController(db, userId: 2);
 
-        await user1.Create(new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) });
-        await user2.Create(new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(2) });
+        await user1.Create(
+            new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) }
+        );
+        await user2.Create(
+            new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(2) }
+        );
 
         var result = await user1.GetMyAppointments();
         var ok = Assert.IsType<OkObjectResult>(result);
@@ -181,7 +207,9 @@ public class AppointmentControllerUnitTests
         var (_, serviceId) = await CreateBusinessAndService(db);
         var controller = CreateController(db, userId: 1);
 
-        await controller.Create(new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) });
+        await controller.Create(
+            new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) }
+        );
         var appointmentId = db.Appointments.First().Id;
 
         var result = await controller.Cancel(appointmentId);
@@ -204,7 +232,9 @@ public class AppointmentControllerUnitTests
         var db = CreateInMemoryDb();
         var (_, serviceId) = await CreateBusinessAndService(db);
         var user1 = CreateController(db, userId: 1);
-        await user1.Create(new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) });
+        await user1.Create(
+            new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) }
+        );
         var appointmentId = db.Appointments.First().Id;
 
         var user2 = CreateController(db, userId: 99);
@@ -220,7 +250,9 @@ public class AppointmentControllerUnitTests
         var db = CreateInMemoryDb();
         var (_, serviceId) = await CreateBusinessAndService(db);
         var receiver = CreateController(db, userId: 1);
-        await receiver.Create(new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) });
+        await receiver.Create(
+            new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) }
+        );
         var appointmentId = db.Appointments.First().Id;
 
         var owner = CreateController(db, userId: 1, role: "Provider");
@@ -246,7 +278,9 @@ public class AppointmentControllerUnitTests
         var db = CreateInMemoryDb();
         var (businessId, serviceId) = await CreateBusinessAndService(db, ownerId: 1);
         var receiver = CreateController(db, userId: 2);
-        await receiver.Create(new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) });
+        await receiver.Create(
+            new AppointmentDto { ServiceId = serviceId, StartTime = DateTime.UtcNow.AddDays(1) }
+        );
 
         var owner = CreateController(db, userId: 1, role: "Provider");
         var result = await owner.GetByBusiness(businessId);

@@ -16,7 +16,7 @@ public class Provider
     public int? BusinessId { get; set; }
     public Business? Business { get; set; }
 
-    public string Title { get; set; } = string.Empty;       // "Dr.", "Uzm.", "Trainer" vb.
+    public string Title { get; set; } = string.Empty; // "Dr.", "Uzm.", "Trainer" vb.
     public string Bio { get; set; } = string.Empty;
     public string? ProfileImageUrl { get; set; }
 
@@ -28,7 +28,8 @@ public class Provider
     public bool AcceptsOnlineBooking { get; set; } = true;
 
     // Provider'ın sunduğu hizmetler (many-to-many)
-    public ICollection<ProviderService> ProviderServices { get; set; } = new List<ProviderService>();
+    public ICollection<ProviderService> ProviderServices { get; set; } =
+        new List<ProviderService>();
 
     // Müsaitlik slotları
     public ICollection<TimeSlot> TimeSlots { get; set; } = new List<TimeSlot>();

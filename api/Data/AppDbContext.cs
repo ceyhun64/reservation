@@ -1,11 +1,12 @@
-using Microsoft.EntityFrameworkCore;
 using api.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace api.Data;
 
 public class AppDbContext : DbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    public AppDbContext(DbContextOptions<AppDbContext> options)
+        : base(options) { }
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Business> Businesses => Set<Business>();
@@ -21,8 +22,7 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder m)
     {
         // ── User ────────────────────────────────────────────────
-        m.Entity<User>()
-            .HasIndex(u => u.Email).IsUnique();
+        m.Entity<User>().HasIndex(u => u.Email).IsUnique();
 
         // User → Provider (1-1)
         m.Entity<User>()
@@ -45,8 +45,7 @@ public class AppDbContext : DbContext
             .HasForeignKey(c => c.ParentCategoryId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        m.Entity<Category>()
-            .HasIndex(c => c.Slug).IsUnique();
+        m.Entity<Category>().HasIndex(c => c.Slug).IsUnique();
 
         // ── Business → Provider ─────────────────────────────────
         m.Entity<Provider>()
@@ -56,8 +55,7 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.SetNull);
 
         // ── ProviderService (composite PK) ──────────────────────
-        m.Entity<ProviderService>()
-            .HasKey(ps => new { ps.ProviderId, ps.ServiceId });
+        m.Entity<ProviderService>().HasKey(ps => new { ps.ProviderId, ps.ServiceId });
 
         m.Entity<ProviderService>()
             .HasOne(ps => ps.Provider)
@@ -72,8 +70,7 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
 
         // ── Service ─────────────────────────────────────────────
-        m.Entity<Service>()
-            .Property(s => s.Price).HasColumnType("decimal(18,2)");
+        m.Entity<Service>().Property(s => s.Price).HasColumnType("decimal(18,2)");
 
         m.Entity<Service>()
             .HasOne(s => s.Category)
@@ -88,8 +85,7 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
 
         // ── Appointment ──────────────────────────────────────────
-        m.Entity<Appointment>()
-            .Property(a => a.PricePaid).HasColumnType("decimal(18,2)");
+        m.Entity<Appointment>().Property(a => a.PricePaid).HasColumnType("decimal(18,2)");
 
         // Receiver → Appointments
         m.Entity<Appointment>()
@@ -139,8 +135,7 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.Restrict);
 
         // Bir randevuya sadece bir yorum
-        m.Entity<Review>()
-            .HasIndex(r => r.AppointmentId).IsUnique();
+        m.Entity<Review>().HasIndex(r => r.AppointmentId).IsUnique();
 
         // ── Notification ─────────────────────────────────────────
         m.Entity<Notification>()
@@ -157,26 +152,201 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
 
         // ── Seed: Kök Kategoriler ─────────────────────────────────
-        m.Entity<Category>().HasData(
-            new Category { Id = 1, Name = "Sağlık", Slug = "saglik", Description = "Tıbbi ve sağlık hizmetleri", DisplayOrder = 1, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 2, Name = "Güzellik", Slug = "guzellik", Description = "Güzellik ve bakım hizmetleri", DisplayOrder = 2, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 3, Name = "Spor & Fitness", Slug = "spor-fitness", Description = "Spor ve antrenman hizmetleri", DisplayOrder = 3, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 4, Name = "Eğlence", Slug = "eglence", Description = "Eğlence ve aktivite hizmetleri", DisplayOrder = 4, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 5, Name = "Eğitim", Slug = "egitim", Description = "Özel ders ve eğitim hizmetleri", DisplayOrder = 5, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 6, Name = "Hukuk & Danışmanlık", Slug = "hukuk-danismanlik", Description = "Profesyonel danışmanlık hizmetleri", DisplayOrder = 6, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            // Alt kategoriler
-            new Category { Id = 10, Name = "Klinik", Slug = "klinik", Description = "Poliklinik ve klinik hizmetleri", DisplayOrder = 1, ParentCategoryId = 1, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 11, Name = "Diş Hekimi", Slug = "dis-hekimi", Description = "Diş sağlığı hizmetleri", DisplayOrder = 2, ParentCategoryId = 1, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 12, Name = "Psikolog", Slug = "psikolog", Description = "Psikolojik destek hizmetleri", DisplayOrder = 3, ParentCategoryId = 1, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 13, Name = "Fizyoterapi", Slug = "fizyoterapi", Description = "Fizyoterapi hizmetleri", DisplayOrder = 4, ParentCategoryId = 1, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 20, Name = "Kuaför", Slug = "kuafor", Description = "Saç bakım hizmetleri", DisplayOrder = 1, ParentCategoryId = 2, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 21, Name = "Makyaj", Slug = "makyaj", Description = "Makyaj hizmetleri", DisplayOrder = 2, ParentCategoryId = 2, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 22, Name = "Nail Art", Slug = "nail-art", Description = "Tırnak bakımı ve nail art", DisplayOrder = 3, ParentCategoryId = 2, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 30, Name = "Personal Trainer", Slug = "personal-trainer", Description = "Kişisel antrenör hizmetleri", DisplayOrder = 1, ParentCategoryId = 3, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 31, Name = "Yoga", Slug = "yoga", Description = "Yoga dersleri", DisplayOrder = 2, ParentCategoryId = 3, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 40, Name = "Escape Room", Slug = "escape-room", Description = "Escape room aktiviteleri", DisplayOrder = 1, ParentCategoryId = 4, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 41, Name = "Bowling", Slug = "bowling", Description = "Bowling salonu rezervasyonu", DisplayOrder = 2, ParentCategoryId = 4, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Category { Id = 42, Name = "Oyun Salonu", Slug = "oyun-salonu", Description = "Oyun salonu rezervasyonu", DisplayOrder = 3, ParentCategoryId = 4, IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
-        );
+        m.Entity<Category>()
+            .HasData(
+                new Category
+                {
+                    Id = 1,
+                    Name = "Sağlık",
+                    Slug = "saglik",
+                    Description = "Tıbbi ve sağlık hizmetleri",
+                    DisplayOrder = 1,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 2,
+                    Name = "Güzellik",
+                    Slug = "guzellik",
+                    Description = "Güzellik ve bakım hizmetleri",
+                    DisplayOrder = 2,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 3,
+                    Name = "Spor & Fitness",
+                    Slug = "spor-fitness",
+                    Description = "Spor ve antrenman hizmetleri",
+                    DisplayOrder = 3,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 4,
+                    Name = "Eğlence",
+                    Slug = "eglence",
+                    Description = "Eğlence ve aktivite hizmetleri",
+                    DisplayOrder = 4,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 5,
+                    Name = "Eğitim",
+                    Slug = "egitim",
+                    Description = "Özel ders ve eğitim hizmetleri",
+                    DisplayOrder = 5,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 6,
+                    Name = "Hukuk & Danışmanlık",
+                    Slug = "hukuk-danismanlik",
+                    Description = "Profesyonel danışmanlık hizmetleri",
+                    DisplayOrder = 6,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                // Alt kategoriler
+                new Category
+                {
+                    Id = 10,
+                    Name = "Klinik",
+                    Slug = "klinik",
+                    Description = "Poliklinik ve klinik hizmetleri",
+                    DisplayOrder = 1,
+                    ParentCategoryId = 1,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 11,
+                    Name = "Diş Hekimi",
+                    Slug = "dis-hekimi",
+                    Description = "Diş sağlığı hizmetleri",
+                    DisplayOrder = 2,
+                    ParentCategoryId = 1,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 12,
+                    Name = "Psikolog",
+                    Slug = "psikolog",
+                    Description = "Psikolojik destek hizmetleri",
+                    DisplayOrder = 3,
+                    ParentCategoryId = 1,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 13,
+                    Name = "Fizyoterapi",
+                    Slug = "fizyoterapi",
+                    Description = "Fizyoterapi hizmetleri",
+                    DisplayOrder = 4,
+                    ParentCategoryId = 1,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 20,
+                    Name = "Kuaför",
+                    Slug = "kuafor",
+                    Description = "Saç bakım hizmetleri",
+                    DisplayOrder = 1,
+                    ParentCategoryId = 2,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 21,
+                    Name = "Makyaj",
+                    Slug = "makyaj",
+                    Description = "Makyaj hizmetleri",
+                    DisplayOrder = 2,
+                    ParentCategoryId = 2,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 22,
+                    Name = "Nail Art",
+                    Slug = "nail-art",
+                    Description = "Tırnak bakımı ve nail art",
+                    DisplayOrder = 3,
+                    ParentCategoryId = 2,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 30,
+                    Name = "Personal Trainer",
+                    Slug = "personal-trainer",
+                    Description = "Kişisel antrenör hizmetleri",
+                    DisplayOrder = 1,
+                    ParentCategoryId = 3,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 31,
+                    Name = "Yoga",
+                    Slug = "yoga",
+                    Description = "Yoga dersleri",
+                    DisplayOrder = 2,
+                    ParentCategoryId = 3,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 40,
+                    Name = "Escape Room",
+                    Slug = "escape-room",
+                    Description = "Escape room aktiviteleri",
+                    DisplayOrder = 1,
+                    ParentCategoryId = 4,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 41,
+                    Name = "Bowling",
+                    Slug = "bowling",
+                    Description = "Bowling salonu rezervasyonu",
+                    DisplayOrder = 2,
+                    ParentCategoryId = 4,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                },
+                new Category
+                {
+                    Id = 42,
+                    Name = "Oyun Salonu",
+                    Slug = "oyun-salonu",
+                    Description = "Oyun salonu rezervasyonu",
+                    DisplayOrder = 3,
+                    ParentCategoryId = 4,
+                    IsActive = true,
+                    CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                }
+            );
     }
 }

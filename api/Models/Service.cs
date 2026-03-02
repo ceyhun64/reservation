@@ -19,7 +19,8 @@ public class Service
     public Business Business { get; set; } = null!;
 
     // Bu hizmeti kim verebilir (many-to-many)
-    public ICollection<ProviderService> ProviderServices { get; set; } = new List<ProviderService>();
+    public ICollection<ProviderService> ProviderServices { get; set; } =
+        new List<ProviderService>();
 
     public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
 

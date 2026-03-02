@@ -8,9 +8,7 @@ public record ReviewCreateDto(
     string? Comment
 );
 
-public record ReviewReplyDto(
-    [Required, MinLength(2)] string Reply
-);
+public record ReviewReplyDto([Required, MinLength(2)] string Reply);
 
 public record ReviewResponseDto(
     int Id,

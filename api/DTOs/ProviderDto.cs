@@ -4,7 +4,7 @@ namespace api.DTOs;
 
 public record ProviderDto(
     [Required, MinLength(2)] string Title,
-    [Required]               string Bio,
+    [Required] string Bio,
     int? BusinessId,
     bool AcceptsOnlineBooking = true
 );

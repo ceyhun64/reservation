@@ -27,6 +27,6 @@ public enum SlotStatus
 {
     Available,
     Booked,
-    Blocked,    // Provider tarafından bloke edildi (izin, mola vb.)
-    Expired
+    Blocked, // Provider tarafından bloke edildi (izin, mola vb.)
+    Expired,
 }

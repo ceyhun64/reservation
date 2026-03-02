@@ -1,11 +1,11 @@
 //api.Tests/ServiceControllerTest.cs
 using System.Net;
-using System.Net.Http.Json;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using api.Data;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using api.Data;
 
 namespace api.Tests.Integration;
 
@@ -15,24 +15,27 @@ public class ServiceControllerTests
     {
         var dbName = Guid.NewGuid().ToString();
 
-        var factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder =>
+        var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
             {
-                builder.ConfigureServices(services =>
-                {
-                    var descriptors = services.Where(d =>
-                        d.ServiceType == typeof(DbContextOptions<AppDbContext>) ||
-                        d.ServiceType == typeof(AppDbContext) ||
-                        (d.ServiceType.FullName != null && d.ServiceType.FullName.Contains("AppDbContext"))
-                    ).ToList();
+                var descriptors = services
+                    .Where(d =>
+                        d.ServiceType == typeof(DbContextOptions<AppDbContext>)
+                        || d.ServiceType == typeof(AppDbContext)
+                        || (
+                            d.ServiceType.FullName != null
+                            && d.ServiceType.FullName.Contains("AppDbContext")
+                        )
+                    )
+                    .ToList();
 
-                    foreach (var d in descriptors)
-                        services.Remove(d);
+                foreach (var d in descriptors)
+                    services.Remove(d);
 
-                    services.AddDbContext<AppDbContext>(opt =>
-                        opt.UseInMemoryDatabase(dbName));
-                });
+                services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase(dbName));
             });
+        });
 
         return factory.CreateClient();
     }
@@ -42,50 +45,64 @@ public class ServiceControllerTests
         var client = CreateFreshClient();
         var email = $"{Guid.NewGuid()}@test.com";
 
-        await client.PostAsJsonAsync("/api/auth/register", new
-        {
-            fullName = "Test Owner",
-            email = email,
-            password = "Test123!",
-            role = role
-        });
+        await client.PostAsJsonAsync(
+            "/api/auth/register",
+            new
+            {
+                fullName = "Test Owner",
+                email = email,
+                password = "Test123!",
+                role = role,
+            }
+        );
 
-        var loginRes = await client.PostAsJsonAsync("/api/auth/login", new
-        {
-            email = email,
-            password = "Test123!"
-        });
+        var loginRes = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { email = email, password = "Test123!" }
+        );
 
         var loginData = await loginRes.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", loginData!["token"]);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            loginData!["token"]
+        );
 
         return client;
     }
 
     // İşletme + hizmet oluşturup businessId ve serviceId döner
-    private async Task<(HttpClient client, int businessId, int serviceId)> CreateClientWithBusinessAndService()
+    private async Task<(
+        HttpClient client,
+        int businessId,
+        int serviceId
+    )> CreateClientWithBusinessAndService()
     {
         var client = await CreateAuthenticatedClient("Provider");
 
-        var businessRes = await client.PostAsJsonAsync("/api/business", new
-        {
-            name = "Test İşletme",
-            description = "Açıklama",
-            address = "Adres",
-            phone = "05001234567"
-        });
+        var businessRes = await client.PostAsJsonAsync(
+            "/api/business",
+            new
+            {
+                name = "Test İşletme",
+                description = "Açıklama",
+                address = "Adres",
+                phone = "05001234567",
+            }
+        );
         var business = await businessRes.Content.ReadFromJsonAsync<Dictionary<string, object>>();
         var businessId = int.Parse(business!["id"].ToString()!);
 
-        var serviceRes = await client.PostAsJsonAsync("/api/service", new
-        {
-            name = "Test Hizmet",
-            description = "Hizmet Açıklama",
-            price = 100.0,
-            durationMinutes = 30,
-            businessId = businessId
-        });
+        var serviceRes = await client.PostAsJsonAsync(
+            "/api/service",
+            new
+            {
+                name = "Test Hizmet",
+                description = "Hizmet Açıklama",
+                price = 100.0,
+                durationMinutes = 30,
+                businessId = businessId,
+            }
+        );
         var service = await serviceRes.Content.ReadFromJsonAsync<Dictionary<string, object>>();
         var serviceId = int.Parse(service!["id"].ToString()!);
 
@@ -129,14 +146,17 @@ public class ServiceControllerTests
     {
         var (client, businessId, _) = await CreateClientWithBusinessAndService();
 
-        var response = await client.PostAsJsonAsync("/api/service", new
-        {
-            name = "Yeni Hizmet",
-            description = "Açıklama",
-            price = 150.0,
-            durationMinutes = 45,
-            businessId = businessId
-        });
+        var response = await client.PostAsJsonAsync(
+            "/api/service",
+            new
+            {
+                name = "Yeni Hizmet",
+                description = "Açıklama",
+                price = 150.0,
+                durationMinutes = 45,
+                businessId = businessId,
+            }
+        );
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
@@ -146,14 +166,17 @@ public class ServiceControllerTests
     {
         var client = CreateFreshClient();
 
-        var response = await client.PostAsJsonAsync("/api/service", new
-        {
-            name = "Hizmet",
-            description = "Açıklama",
-            price = 100.0,
-            durationMinutes = 30,
-            businessId = 1
-        });
+        var response = await client.PostAsJsonAsync(
+            "/api/service",
+            new
+            {
+                name = "Hizmet",
+                description = "Açıklama",
+                price = 100.0,
+                durationMinutes = 30,
+                businessId = 1,
+            }
+        );
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -163,14 +186,17 @@ public class ServiceControllerTests
     {
         var client = await CreateAuthenticatedClient("Provider");
 
-        var response = await client.PostAsJsonAsync("/api/service", new
-        {
-            name = "Hizmet",
-            description = "Açıklama",
-            price = 100.0,
-            durationMinutes = 30,
-            businessId = 9999
-        });
+        var response = await client.PostAsJsonAsync(
+            "/api/service",
+            new
+            {
+                name = "Hizmet",
+                description = "Açıklama",
+                price = 100.0,
+                durationMinutes = 30,
+                businessId = 9999,
+            }
+        );
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -180,14 +206,17 @@ public class ServiceControllerTests
     {
         var (client, _, serviceId) = await CreateClientWithBusinessAndService();
 
-        var response = await client.PutAsJsonAsync($"/api/service/{serviceId}", new
-        {
-            name = "Güncel Hizmet",
-            description = "Güncel Açıklama",
-            price = 200.0,
-            durationMinutes = 60,
-            businessId = 1
-        });
+        var response = await client.PutAsJsonAsync(
+            $"/api/service/{serviceId}",
+            new
+            {
+                name = "Güncel Hizmet",
+                description = "Güncel Açıklama",
+                price = 200.0,
+                durationMinutes = 60,
+                businessId = 1,
+            }
+        );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }

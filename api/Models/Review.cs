@@ -16,10 +16,10 @@ public class Review
     public int AppointmentId { get; set; }
     public Appointment Appointment { get; set; } = null!;
 
-    public int Rating { get; set; }         // 1-5
+    public int Rating { get; set; } // 1-5
     public string? Comment { get; set; }
 
-    public bool IsVisible { get; set; } = true;  // Admin moderasyonu
+    public bool IsVisible { get; set; } = true; // Admin moderasyonu
 
     // Provider'ın cevabı
     public string? ProviderReply { get; set; }

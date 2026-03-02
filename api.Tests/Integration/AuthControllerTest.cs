@@ -1,10 +1,10 @@
 //api.Tests/AuthControllerTest.cs
 using System.Net;
 using System.Net.Http.Json;
+using api.Data;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using api.Data;
 
 namespace api.Tests.Integration;
 
@@ -14,24 +14,27 @@ public class AuthControllerTests
     {
         var dbName = Guid.NewGuid().ToString();
 
-        var factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder =>
+        var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
             {
-                builder.ConfigureServices(services =>
-                {
-                    var descriptors = services.Where(d =>
-                        d.ServiceType == typeof(DbContextOptions<AppDbContext>) ||
-                        d.ServiceType == typeof(AppDbContext) ||
-                        (d.ServiceType.FullName != null && d.ServiceType.FullName.Contains("AppDbContext"))
-                    ).ToList();
+                var descriptors = services
+                    .Where(d =>
+                        d.ServiceType == typeof(DbContextOptions<AppDbContext>)
+                        || d.ServiceType == typeof(AppDbContext)
+                        || (
+                            d.ServiceType.FullName != null
+                            && d.ServiceType.FullName.Contains("AppDbContext")
+                        )
+                    )
+                    .ToList();
 
-                    foreach (var d in descriptors)
-                        services.Remove(d);
+                foreach (var d in descriptors)
+                    services.Remove(d);
 
-                    services.AddDbContext<AppDbContext>(opt =>
-                        opt.UseInMemoryDatabase(dbName));
-                });
+                services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase(dbName));
             });
+        });
 
         return factory.CreateClient();
     }
@@ -41,13 +44,16 @@ public class AuthControllerTests
     {
         var client = CreateFreshClient();
 
-        var response = await client.PostAsJsonAsync("/api/auth/register", new
-        {
-            fullName = "Test User",
-            email = "test@test.com",
-            password = "Test123!",
-            role = "Receiver"
-        });
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/register",
+            new
+            {
+                fullName = "Test User",
+                email = "test@test.com",
+                password = "Test123!",
+                role = "Receiver",
+            }
+        );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -63,7 +69,7 @@ public class AuthControllerTests
             fullName = "Test User",
             email = "duplicate@test.com",
             password = "Test123!",
-            role = "Receiver"
+            role = "Receiver",
         };
 
         var first = await client.PostAsJsonAsync("/api/auth/register", data);
@@ -79,20 +85,22 @@ public class AuthControllerTests
         // Aynı client → Register ve Login aynı DB'de
         var client = CreateFreshClient();
 
-        var register = await client.PostAsJsonAsync("/api/auth/register", new
-        {
-            fullName = "Test User",
-            email = "login@test.com",
-            password = "Test123!",
-            role = "Receiver"
-        });
+        var register = await client.PostAsJsonAsync(
+            "/api/auth/register",
+            new
+            {
+                fullName = "Test User",
+                email = "login@test.com",
+                password = "Test123!",
+                role = "Receiver",
+            }
+        );
         Assert.Equal(HttpStatusCode.OK, register.StatusCode);
 
-        var response = await client.PostAsJsonAsync("/api/auth/login", new
-        {
-            email = "login@test.com",
-            password = "Test123!"
-        });
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { email = "login@test.com", password = "Test123!" }
+        );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var result = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
@@ -104,11 +112,10 @@ public class AuthControllerTests
     {
         var client = CreateFreshClient();
 
-        var response = await client.PostAsJsonAsync("/api/auth/login", new
-        {
-            email = "notexist@test.com",
-            password = "WrongPass!"
-        });
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { email = "notexist@test.com", password = "WrongPass!" }
+        );
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }

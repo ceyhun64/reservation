@@ -1,11 +1,11 @@
 //api.Tests/Unit/AuthControllerUnitTests.cs
+using api.Controllers;
+using api.Data;
+using api.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Moq;
-using api.Controllers;
-using api.Data;
-using api.DTOs;
 
 namespace api.Tests.Unit;
 
@@ -26,12 +26,10 @@ public class AuthControllerUnitTests
             { "Jwt:Secret", "super_secret_key_for_testing_1234567890" },
             { "Jwt:Issuer", "testissuer" },
             { "Jwt:Audience", "testaudience" },
-            { "Jwt:ExpireMinutes", "60" }
+            { "Jwt:ExpireMinutes", "60" },
         };
 
-        return new ConfigurationBuilder()
-            .AddInMemoryCollection(inMemorySettings)
-            .Build();
+        return new ConfigurationBuilder().AddInMemoryCollection(inMemorySettings).Build();
     }
 
     // ──────────────── REGISTER ────────────────
@@ -43,13 +41,15 @@ public class AuthControllerUnitTests
         var config = CreateConfig();
         var controller = new AuthController(db, config);
 
-        var result = await controller.Register(new RegisterDto
-        {
-            FullName = "Test User",
-            Email = "test@test.com",
-            Password = "Test123!",
-            Role = "Receiver"
-        });
+        var result = await controller.Register(
+            new RegisterDto
+            {
+                FullName = "Test User",
+                Email = "test@test.com",
+                Password = "Test123!",
+                Role = "Receiver",
+            }
+        );
 
         var ok = Assert.IsType<OkObjectResult>(result);
         Assert.NotNull(ok.Value);
@@ -67,7 +67,7 @@ public class AuthControllerUnitTests
             FullName = "Test User",
             Email = "duplicate@test.com",
             Password = "Test123!",
-            Role = "Receiver"
+            Role = "Receiver",
         };
 
         await controller.Register(dto);
@@ -85,19 +85,19 @@ public class AuthControllerUnitTests
         var config = CreateConfig();
         var controller = new AuthController(db, config);
 
-        await controller.Register(new RegisterDto
-        {
-            FullName = "Test User",
-            Email = "login@test.com",
-            Password = "Test123!",
-            Role = "Receiver"
-        });
+        await controller.Register(
+            new RegisterDto
+            {
+                FullName = "Test User",
+                Email = "login@test.com",
+                Password = "Test123!",
+                Role = "Receiver",
+            }
+        );
 
-        var result = await controller.Login(new LoginDto
-        {
-            Email = "login@test.com",
-            Password = "Test123!"
-        });
+        var result = await controller.Login(
+            new LoginDto { Email = "login@test.com", Password = "Test123!" }
+        );
 
         var ok = Assert.IsType<OkObjectResult>(result);
         Assert.NotNull(ok.Value);
@@ -115,19 +115,19 @@ public class AuthControllerUnitTests
         var config = CreateConfig();
         var controller = new AuthController(db, config);
 
-        await controller.Register(new RegisterDto
-        {
-            FullName = "Test User",
-            Email = "user@test.com",
-            Password = "Test123!",
-            Role = "Receiver"
-        });
+        await controller.Register(
+            new RegisterDto
+            {
+                FullName = "Test User",
+                Email = "user@test.com",
+                Password = "Test123!",
+                Role = "Receiver",
+            }
+        );
 
-        var result = await controller.Login(new LoginDto
-        {
-            Email = "user@test.com",
-            Password = "WrongPassword!"
-        });
+        var result = await controller.Login(
+            new LoginDto { Email = "user@test.com", Password = "WrongPassword!" }
+        );
 
         Assert.IsType<UnauthorizedObjectResult>(result);
     }
@@ -139,11 +139,9 @@ public class AuthControllerUnitTests
         var config = CreateConfig();
         var controller = new AuthController(db, config);
 
-        var result = await controller.Login(new LoginDto
-        {
-            Email = "notexist@test.com",
-            Password = "Test123!"
-        });
+        var result = await controller.Login(
+            new LoginDto { Email = "notexist@test.com", Password = "Test123!" }
+        );
 
         Assert.IsType<UnauthorizedObjectResult>(result);
     }
@@ -155,13 +153,15 @@ public class AuthControllerUnitTests
         var config = CreateConfig();
         var controller = new AuthController(db, config);
 
-        await controller.Register(new RegisterDto
-        {
-            FullName = "Test User",
-            Email = "hash@test.com",
-            Password = "Test123!",
-            Role = "Receiver"
-        });
+        await controller.Register(
+            new RegisterDto
+            {
+                FullName = "Test User",
+                Email = "hash@test.com",
+                Password = "Test123!",
+                Role = "Receiver",
+            }
+        );
 
         var user = db.Users.First();
         Assert.NotEqual("Test123!", user.PasswordHash);
@@ -175,13 +175,15 @@ public class AuthControllerUnitTests
         var config = CreateConfig();
         var controller = new AuthController(db, config);
 
-        await controller.Register(new RegisterDto
-        {
-            FullName = "Test User",
-            Email = "save@test.com",
-            Password = "Test123!",
-            Role = "Receiver"
-        });
+        await controller.Register(
+            new RegisterDto
+            {
+                FullName = "Test User",
+                Email = "save@test.com",
+                Password = "Test123!",
+                Role = "Receiver",
+            }
+        );
 
         Assert.Equal(1, db.Users.Count());
         Assert.Equal("save@test.com", db.Users.First().Email);

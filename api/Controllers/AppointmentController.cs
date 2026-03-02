@@ -1,12 +1,12 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using api.Common;
 using api.Data;
 using api.DTOs;
 using api.Models;
 using api.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace api.Controllers;
 
@@ -29,12 +29,13 @@ public class AppointmentController : ControllerBase
     // ─────────────────────────────────────────────────────────────────────────
     [HttpGet("my")]
     public async Task<ActionResult<ApiResponse<PagedResponse<AppointmentResponseDto>>>> GetMine(
-        [FromQuery] AppointmentFilterDto filter)
+        [FromQuery] AppointmentFilterDto filter
+    )
     {
         var userId = GetUserId();
 
-        var query = _db.Appointments
-            .Include(a => a.Receiver)
+        var query = _db
+            .Appointments.Include(a => a.Receiver)
             .Include(a => a.Provider!.User)
             .Include(a => a.Service!.Category)
             .Include(a => a.Review)
@@ -43,8 +44,11 @@ public class AppointmentController : ControllerBase
 
         query = ApplyFilters(query, filter);
 
-        return Ok(ApiResponse<PagedResponse<AppointmentResponseDto>>.Ok(
-            await ToPaged(query, filter.Page, filter.PageSize)));
+        return Ok(
+            ApiResponse<PagedResponse<AppointmentResponseDto>>.Ok(
+                await ToPaged(query, filter.Page, filter.PageSize)
+            )
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -52,15 +56,21 @@ public class AppointmentController : ControllerBase
     // ─────────────────────────────────────────────────────────────────────────
     [HttpGet("provider")]
     [Authorize(Roles = "Provider,Admin")]
-    public async Task<ActionResult<ApiResponse<PagedResponse<AppointmentResponseDto>>>> GetAsProvider(
-        [FromQuery] AppointmentFilterDto filter)
+    public async Task<
+        ActionResult<ApiResponse<PagedResponse<AppointmentResponseDto>>>
+    > GetAsProvider([FromQuery] AppointmentFilterDto filter)
     {
         var userId = GetUserId();
         var provider = await _db.Providers.FirstOrDefaultAsync(p => p.UserId == userId);
-        if (provider is null) return BadRequest(ApiResponse<PagedResponse<AppointmentResponseDto>>.Fail("Provider profili bulunamadı."));
+        if (provider is null)
+            return BadRequest(
+                ApiResponse<PagedResponse<AppointmentResponseDto>>.Fail(
+                    "Provider profili bulunamadı."
+                )
+            );
 
-        var query = _db.Appointments
-            .Include(a => a.Receiver)
+        var query = _db
+            .Appointments.Include(a => a.Receiver)
             .Include(a => a.Provider!.User)
             .Include(a => a.Service!.Category)
             .Include(a => a.Review)
@@ -69,8 +79,11 @@ public class AppointmentController : ControllerBase
 
         query = ApplyFilters(query, filter);
 
-        return Ok(ApiResponse<PagedResponse<AppointmentResponseDto>>.Ok(
-            await ToPaged(query, filter.Page, filter.PageSize)));
+        return Ok(
+            ApiResponse<PagedResponse<AppointmentResponseDto>>.Ok(
+                await ToPaged(query, filter.Page, filter.PageSize)
+            )
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -78,16 +91,21 @@ public class AppointmentController : ControllerBase
     // ─────────────────────────────────────────────────────────────────────────
     [HttpGet("business/{businessId}")]
     [Authorize(Roles = "Provider,Admin")]
-    public async Task<ActionResult<ApiResponse<PagedResponse<AppointmentResponseDto>>>> GetByBusiness(
-        int businessId, [FromQuery] AppointmentFilterDto filter)
+    public async Task<
+        ActionResult<ApiResponse<PagedResponse<AppointmentResponseDto>>>
+    > GetByBusiness(int businessId, [FromQuery] AppointmentFilterDto filter)
     {
         var userId = GetUserId();
         var business = await _db.Businesses.FindAsync(businessId);
-        if (business is null) return NotFound(ApiResponse<PagedResponse<AppointmentResponseDto>>.Fail("İşletme bulunamadı."));
-        if (business.OwnerId != userId && !User.IsInRole("Admin")) return Forbid();
+        if (business is null)
+            return NotFound(
+                ApiResponse<PagedResponse<AppointmentResponseDto>>.Fail("İşletme bulunamadı.")
+            );
+        if (business.OwnerId != userId && !User.IsInRole("Admin"))
+            return Forbid();
 
-        var query = _db.Appointments
-            .Include(a => a.Receiver)
+        var query = _db
+            .Appointments.Include(a => a.Receiver)
             .Include(a => a.Provider!.User)
             .Include(a => a.Service!.Category)
             .Include(a => a.Review)
@@ -96,15 +114,20 @@ public class AppointmentController : ControllerBase
 
         query = ApplyFilters(query, filter);
 
-        return Ok(ApiResponse<PagedResponse<AppointmentResponseDto>>.Ok(
-            await ToPaged(query, filter.Page, filter.PageSize)));
+        return Ok(
+            ApiResponse<PagedResponse<AppointmentResponseDto>>.Ok(
+                await ToPaged(query, filter.Page, filter.PageSize)
+            )
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     //  POST: Randevu oluştur
     // ─────────────────────────────────────────────────────────────────────────
     [HttpPost]
-    public async Task<ActionResult<ApiResponse<AppointmentResponseDto>>> Create(AppointmentCreateDto dto)
+    public async Task<ActionResult<ApiResponse<AppointmentResponseDto>>> Create(
+        AppointmentCreateDto dto
+    )
     {
         var receiverId = GetUserId();
 
@@ -113,7 +136,9 @@ public class AppointmentController : ControllerBase
         if (slot is null || slot.ProviderId != dto.ProviderId)
             return BadRequest(ApiResponse<AppointmentResponseDto>.Fail("Geçersiz zaman slotu."));
         if (slot.Status != SlotStatus.Available)
-            return BadRequest(ApiResponse<AppointmentResponseDto>.Fail("Bu slot artık müsait değil."));
+            return BadRequest(
+                ApiResponse<AppointmentResponseDto>.Fail("Bu slot artık müsait değil.")
+            );
 
         // Servis kontrolü
         var service = await _db.Services.FindAsync(dto.ServiceId);
@@ -121,10 +146,13 @@ public class AppointmentController : ControllerBase
             return NotFound(ApiResponse<AppointmentResponseDto>.Fail("Hizmet bulunamadı."));
 
         // Provider bu hizmeti sunuyor mu?
-        var providerService = await _db.ProviderServices
-            .FirstOrDefaultAsync(ps => ps.ProviderId == dto.ProviderId && ps.ServiceId == dto.ServiceId && ps.IsActive);
+        var providerService = await _db.ProviderServices.FirstOrDefaultAsync(ps =>
+            ps.ProviderId == dto.ProviderId && ps.ServiceId == dto.ServiceId && ps.IsActive
+        );
         if (providerService is null)
-            return BadRequest(ApiResponse<AppointmentResponseDto>.Fail("Bu provider söz konusu hizmeti sunmuyor."));
+            return BadRequest(
+                ApiResponse<AppointmentResponseDto>.Fail("Bu provider söz konusu hizmeti sunmuyor.")
+            );
 
         var price = providerService.CustomPrice ?? service.Price;
 
@@ -138,7 +166,7 @@ public class AppointmentController : ControllerBase
             EndTime = slot.EndTime,
             PricePaid = price,
             ReceiverNotes = dto.ReceiverNotes,
-            Status = AppointmentStatus.Pending
+            Status = AppointmentStatus.Pending,
         };
 
         // Slot'u dolu işaretle
@@ -152,13 +180,23 @@ public class AppointmentController : ControllerBase
         await _db.SaveChangesAsync();
 
         // Bildirimler
-        var provider = await _db.Providers.Include(p => p.User).FirstAsync(p => p.Id == dto.ProviderId);
-        await _notify.SendAsync(receiverId, "Randevu Alındı",
+        var provider = await _db
+            .Providers.Include(p => p.User)
+            .FirstAsync(p => p.Id == dto.ProviderId);
+        await _notify.SendAsync(
+            receiverId,
+            "Randevu Alındı",
             $"{service.Name} için randevunuz alındı. Onay bekleniyor.",
-            "Info", appointment.Id);
-        await _notify.SendAsync(provider.UserId, "Yeni Randevu Talebi",
+            "Info",
+            appointment.Id
+        );
+        await _notify.SendAsync(
+            provider.UserId,
+            "Yeni Randevu Talebi",
             $"Yeni bir randevu talebiniz var: {service.Name}",
-            "Info", appointment.Id);
+            "Info",
+            appointment.Id
+        );
 
         await _db.Entry(appointment).Reference(a => a.Receiver).LoadAsync();
         await _db.Entry(appointment).Reference(a => a.Provider).LoadAsync();
@@ -168,8 +206,14 @@ public class AppointmentController : ControllerBase
         if (appointment.Service is not null)
             await _db.Entry(appointment.Service).Reference(s => s.Category).LoadAsync();
 
-        return CreatedAtAction(nameof(GetMine), null,
-            ApiResponse<AppointmentResponseDto>.Ok(ToDto(appointment), "Randevu talebiniz iletildi."));
+        return CreatedAtAction(
+            nameof(GetMine),
+            null,
+            ApiResponse<AppointmentResponseDto>.Ok(
+                ToDto(appointment),
+                "Randevu talebiniz iletildi."
+            )
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -179,54 +223,77 @@ public class AppointmentController : ControllerBase
     [HttpPatch("{id}/status")]
     [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<AppointmentResponseDto>>> UpdateStatus(
-        int id, AppointmentUpdateStatusDto dto)
+        int id,
+        AppointmentUpdateStatusDto dto
+    )
     {
         var userId = GetUserId();
         var appt = await LoadAppointment(id);
-        if (appt is null) return NotFound(ApiResponse<AppointmentResponseDto>.Fail("Randevu bulunamadı."));
+        if (appt is null)
+            return NotFound(ApiResponse<AppointmentResponseDto>.Fail("Randevu bulunamadı."));
 
         // Sadece kendi randevusunu yönetebilir
-        if (appt.Provider.UserId != userId && !User.IsInRole("Admin")) return Forbid();
+        if (appt.Provider.UserId != userId && !User.IsInRole("Admin"))
+            return Forbid();
 
         var (newStatus, notifyTitle, notifyMsg) = dto.Action.ToLower() switch
         {
-            "confirm" => (AppointmentStatus.Confirmed,
-                           "Randevunuz Onaylandı",
-                           $"{appt.Service.Name} randevunuz {appt.StartTime:dd.MM.yyyy HH:mm} için onaylandı."),
+            "confirm" => (
+                AppointmentStatus.Confirmed,
+                "Randevunuz Onaylandı",
+                $"{appt.Service.Name} randevunuz {appt.StartTime:dd.MM.yyyy HH:mm} için onaylandı."
+            ),
 
-            "reject" => (AppointmentStatus.Rejected,
-                           "Randevunuz Reddedildi",
-                           $"{appt.Service.Name} randevunuz reddedildi. Neden: {dto.Reason ?? "-"}"),
+            "reject" => (
+                AppointmentStatus.Rejected,
+                "Randevunuz Reddedildi",
+                $"{appt.Service.Name} randevunuz reddedildi. Neden: {dto.Reason ?? "-"}"
+            ),
 
-            "complete" => (AppointmentStatus.Completed,
-                           "Randevunuz Tamamlandı",
-                           $"{appt.Service.Name} hizmetiniz tamamlandı. Değerlendirme yapmayı unutmayın!"),
+            "complete" => (
+                AppointmentStatus.Completed,
+                "Randevunuz Tamamlandı",
+                $"{appt.Service.Name} hizmetiniz tamamlandı. Değerlendirme yapmayı unutmayın!"
+            ),
 
-            "noshow" => (AppointmentStatus.NoShow,
-                           "Randevu: Gelmedi",
-                           $"{appt.StartTime:dd.MM.yyyy HH:mm} tarihli randevunuz 'Gelmedi' olarak işaretlendi."),
+            "noshow" => (
+                AppointmentStatus.NoShow,
+                "Randevu: Gelmedi",
+                $"{appt.StartTime:dd.MM.yyyy HH:mm} tarihli randevunuz 'Gelmedi' olarak işaretlendi."
+            ),
 
-            _ => throw new ArgumentException("Geçersiz aksiyon. (confirm/reject/complete/noshow)")
+            _ => throw new ArgumentException("Geçersiz aksiyon. (confirm/reject/complete/noshow)"),
         };
 
         if (!IsValidTransition(appt.Status, newStatus))
-            return BadRequest(ApiResponse<AppointmentResponseDto>.Fail(
-                $"'{appt.Status}' durumundan '{newStatus}' durumuna geçiş yapılamaz."));
+            return BadRequest(
+                ApiResponse<AppointmentResponseDto>.Fail(
+                    $"'{appt.Status}' durumundan '{newStatus}' durumuna geçiş yapılamaz."
+                )
+            );
 
         appt.Status = newStatus;
         appt.CancellationReason = dto.Reason;
 
-        if (newStatus == AppointmentStatus.Confirmed) appt.ConfirmedAt = DateTime.UtcNow;
-        if (newStatus == AppointmentStatus.Completed) appt.CompletedAt = DateTime.UtcNow;
+        if (newStatus == AppointmentStatus.Confirmed)
+            appt.ConfirmedAt = DateTime.UtcNow;
+        if (newStatus == AppointmentStatus.Completed)
+            appt.CompletedAt = DateTime.UtcNow;
         if (newStatus is AppointmentStatus.Rejected or AppointmentStatus.NoShow)
         {
             appt.CancelledAt = DateTime.UtcNow;
-            if (appt.TimeSlot is not null) appt.TimeSlot.Status = SlotStatus.Available; // Slotu serbest bırak
+            if (appt.TimeSlot is not null)
+                appt.TimeSlot.Status = SlotStatus.Available; // Slotu serbest bırak
         }
 
         await _db.SaveChangesAsync();
-        await _notify.SendAsync(appt.ReceiverId, notifyTitle, notifyMsg,
-            newStatus == AppointmentStatus.Confirmed ? "Success" : "Warning", appt.Id);
+        await _notify.SendAsync(
+            appt.ReceiverId,
+            notifyTitle,
+            notifyMsg,
+            newStatus == AppointmentStatus.Confirmed ? "Success" : "Warning",
+            appt.Id
+        );
 
         return Ok(ApiResponse<AppointmentResponseDto>.Ok(ToDto(appt)));
     }
@@ -239,8 +306,10 @@ public class AppointmentController : ControllerBase
     {
         var userId = GetUserId();
         var appt = await LoadAppointment(id);
-        if (appt is null) return NotFound(ApiResponse<object?>.Fail("Randevu bulunamadı."));
-        if (appt.ReceiverId != userId) return Forbid();
+        if (appt is null)
+            return NotFound(ApiResponse<object?>.Fail("Randevu bulunamadı."));
+        if (appt.ReceiverId != userId)
+            return Forbid();
 
         if (appt.Status is not (AppointmentStatus.Pending or AppointmentStatus.Confirmed))
             return BadRequest(ApiResponse<object?>.Fail("Bu randevu iptal edilemez."));
@@ -253,9 +322,13 @@ public class AppointmentController : ControllerBase
             appt.TimeSlot.Status = SlotStatus.Available;
 
         await _db.SaveChangesAsync();
-        await _notify.SendAsync(appt.Provider.UserId, "Randevu İptal Edildi",
+        await _notify.SendAsync(
+            appt.Provider.UserId,
+            "Randevu İptal Edildi",
             $"Müşteri {appt.Receiver.FullName} randevuyu iptal etti.",
-            "Warning", appt.Id);
+            "Warning",
+            appt.Id
+        );
 
         return Ok(ApiResponse<object?>.Ok(null, "Randevu iptal edildi."));
     }
@@ -271,46 +344,75 @@ public class AppointmentController : ControllerBase
             (AppointmentStatus.Pending, AppointmentStatus.Rejected) => true,
             (AppointmentStatus.Confirmed, AppointmentStatus.Completed) => true,
             (AppointmentStatus.Confirmed, AppointmentStatus.NoShow) => true,
-            _ => false
+            _ => false,
         };
 
     private async Task<Appointment?> LoadAppointment(int id) =>
-        await _db.Appointments
-            .Include(a => a.Receiver)
+        await _db
+            .Appointments.Include(a => a.Receiver)
             .Include(a => a.Provider!.User)
             .Include(a => a.Service!.Category)
             .Include(a => a.TimeSlot)
             .Include(a => a.Review)
             .FirstOrDefaultAsync(a => a.Id == id);
 
-    private static IQueryable<Appointment> ApplyFilters(IQueryable<Appointment> q, AppointmentFilterDto f)
+    private static IQueryable<Appointment> ApplyFilters(
+        IQueryable<Appointment> q,
+        AppointmentFilterDto f
+    )
     {
-        if (!string.IsNullOrWhiteSpace(f.Status) && Enum.TryParse<AppointmentStatus>(f.Status, out var status))
+        if (
+            !string.IsNullOrWhiteSpace(f.Status)
+            && Enum.TryParse<AppointmentStatus>(f.Status, out var status)
+        )
             q = q.Where(a => a.Status == status);
-        if (f.From.HasValue) q = q.Where(a => a.StartTime >= f.From);
-        if (f.To.HasValue) q = q.Where(a => a.StartTime <= f.To);
+        if (f.From.HasValue)
+            q = q.Where(a => a.StartTime >= f.From);
+        if (f.To.HasValue)
+            q = q.Where(a => a.StartTime <= f.To);
         return q.OrderByDescending(a => a.StartTime);
     }
 
     private static async Task<PagedResponse<AppointmentResponseDto>> ToPaged(
-        IQueryable<Appointment> q, int page, int pageSize)
+        IQueryable<Appointment> q,
+        int page,
+        int pageSize
+    )
     {
         var total = await q.CountAsync();
-        var items = await q.Skip((page - 1) * pageSize).Take(pageSize).Select(a => ToDto(a)).ToListAsync();
-        return new PagedResponse<AppointmentResponseDto> { Items = items, TotalCount = total, Page = page, PageSize = pageSize };
+        var items = await q.Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(a => ToDto(a))
+            .ToListAsync();
+        return new PagedResponse<AppointmentResponseDto>
+        {
+            Items = items,
+            TotalCount = total,
+            Page = page,
+            PageSize = pageSize,
+        };
     }
 
     private static AppointmentResponseDto ToDto(Appointment a) =>
-        new(a.Id,
-            a.ReceiverId, a.Receiver?.FullName ?? "",
-            a.ProviderId, a.Provider?.User?.FullName ?? "",
-            a.ServiceId, a.Service?.Name ?? "",
+        new(
+            a.Id,
+            a.ReceiverId,
+            a.Receiver?.FullName ?? "",
+            a.ProviderId,
+            a.Provider?.User?.FullName ?? "",
+            a.ServiceId,
+            a.Service?.Name ?? "",
             a.Service?.Category?.Name ?? "",
-            a.StartTime, a.EndTime, a.PricePaid,
+            a.StartTime,
+            a.EndTime,
+            a.PricePaid,
             a.Status.ToString(),
-            a.ReceiverNotes, a.ProviderNotes, a.CancellationReason,
+            a.ReceiverNotes,
+            a.ProviderNotes,
+            a.CancellationReason,
             a.Review is not null,
-            a.CreatedAt);
+            a.CreatedAt
+        );
 
     private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 }

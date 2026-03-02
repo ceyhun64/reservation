@@ -1,10 +1,10 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using api.Common;
 using api.Data;
 using api.DTOs;
 using api.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace api.Controllers;
 
@@ -13,20 +13,20 @@ namespace api.Controllers;
 public class CategoryController : ControllerBase
 {
     private readonly AppDbContext _db;
+
     public CategoryController(AppDbContext db) => _db = db;
 
     /// <summary>Tüm kategoriler (ağaç yapısında)</summary>
     [HttpGet]
     public async Task<ActionResult<ApiResponse<List<CategoryResponseDto>>>> GetAll()
     {
-        var all = await _db.Categories
-            .Where(c => c.IsActive)
+        var all = await _db
+            .Categories.Where(c => c.IsActive)
             .OrderBy(c => c.DisplayOrder)
             .ToListAsync();
 
         // Sadece kök kategorileri döndür, alt kategoriler içinde
-        var roots = all
-            .Where(c => c.ParentCategoryId == null)
+        var roots = all.Where(c => c.ParentCategoryId == null)
             .Select(c => MapToDto(c, all))
             .ToList();
 
@@ -39,7 +39,8 @@ public class CategoryController : ControllerBase
     {
         var all = await _db.Categories.Where(c => c.IsActive).ToListAsync();
         var cat = all.FirstOrDefault(c => c.Id == id);
-        if (cat is null) return NotFound(ApiResponse<CategoryResponseDto>.Fail("Kategori bulunamadı."));
+        if (cat is null)
+            return NotFound(ApiResponse<CategoryResponseDto>.Fail("Kategori bulunamadı."));
 
         return Ok(ApiResponse<CategoryResponseDto>.Ok(MapToDto(cat, all)));
     }
@@ -49,7 +50,10 @@ public class CategoryController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<ApiResponse<CategoryResponseDto>>> Create(CategoryDto dto)
     {
-        if (dto.ParentCategoryId.HasValue && !await _db.Categories.AnyAsync(c => c.Id == dto.ParentCategoryId))
+        if (
+            dto.ParentCategoryId.HasValue
+            && !await _db.Categories.AnyAsync(c => c.Id == dto.ParentCategoryId)
+        )
             return BadRequest(ApiResponse<CategoryResponseDto>.Fail("Üst kategori bulunamadı."));
 
         var slug = GenerateSlug(dto.Name);
@@ -63,23 +67,30 @@ public class CategoryController : ControllerBase
             Slug = slug,
             IconUrl = dto.IconUrl,
             ParentCategoryId = dto.ParentCategoryId,
-            DisplayOrder = dto.DisplayOrder
+            DisplayOrder = dto.DisplayOrder,
         };
 
         _db.Categories.Add(category);
         await _db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetById), new { id = category.Id },
-            ApiResponse<CategoryResponseDto>.Ok(MapToDto(category, new List<Category>())));
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = category.Id },
+            ApiResponse<CategoryResponseDto>.Ok(MapToDto(category, new List<Category>()))
+        );
     }
 
     /// <summary>Kategori güncelle (Admin)</summary>
     [HttpPut("{id}")]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<ApiResponse<CategoryResponseDto>>> Update(int id, CategoryDto dto)
+    public async Task<ActionResult<ApiResponse<CategoryResponseDto>>> Update(
+        int id,
+        CategoryDto dto
+    )
     {
         var category = await _db.Categories.FindAsync(id);
-        if (category is null) return NotFound(ApiResponse<CategoryResponseDto>.Fail("Kategori bulunamadı."));
+        if (category is null)
+            return NotFound(ApiResponse<CategoryResponseDto>.Fail("Kategori bulunamadı."));
 
         category.Name = dto.Name;
         category.Description = dto.Description;
@@ -97,7 +108,8 @@ public class CategoryController : ControllerBase
     public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
     {
         var category = await _db.Categories.FindAsync(id);
-        if (category is null) return NotFound(ApiResponse<object>.Fail("Kategori bulunamadı."));
+        if (category is null)
+            return NotFound(ApiResponse<object>.Fail("Kategori bulunamadı."));
 
         category.IsActive = false;
         await _db.SaveChangesAsync();
@@ -115,15 +127,27 @@ public class CategoryController : ControllerBase
             c.IconUrl,
             c.DisplayOrder,
             c.ParentCategoryId,
-            c.ParentCategoryId.HasValue ? all.FirstOrDefault(p => p.Id == c.ParentCategoryId)?.Name : null,
-            all.Where(sub => sub.ParentCategoryId == c.Id).Select(sub => MapToDto(sub, all)).ToList()
+            c.ParentCategoryId.HasValue
+                ? all.FirstOrDefault(p => p.Id == c.ParentCategoryId)?.Name
+                : null,
+            all.Where(sub => sub.ParentCategoryId == c.Id)
+                .Select(sub => MapToDto(sub, all))
+                .ToList()
         );
 
     private static string GenerateSlug(string name) =>
         name.ToLower()
             .Replace(" ", "-")
-            .Replace("ı", "i").Replace("ğ", "g").Replace("ü", "u")
-            .Replace("ş", "s").Replace("ö", "o").Replace("ç", "c")
-            .Replace("İ", "i").Replace("Ğ", "g").Replace("Ü", "u")
-            .Replace("Ş", "s").Replace("Ö", "o").Replace("Ç", "c");
+            .Replace("ı", "i")
+            .Replace("ğ", "g")
+            .Replace("ü", "u")
+            .Replace("ş", "s")
+            .Replace("ö", "o")
+            .Replace("ç", "c")
+            .Replace("İ", "i")
+            .Replace("Ğ", "g")
+            .Replace("Ü", "u")
+            .Replace("Ş", "s")
+            .Replace("Ö", "o")
+            .Replace("Ç", "c");
 }
