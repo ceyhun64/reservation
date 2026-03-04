@@ -122,7 +122,7 @@ _(Full endpoint list continues in the Swagger UI.)_
 
 ---
 
-## 🧪 Example Workflow
+## 🔄 Example API Workflow
 
 1. Provider registers → `POST /api/auth/register` (role=Provider)
 2. Provider creates a business → `POST /api/businesses`
@@ -132,6 +132,60 @@ _(Full endpoint list continues in the Swagger UI.)_
 6. Receiver books appointment → `POST /api/appointments`
 7. Provider confirms → `PATCH /api/appointments/{id}/status`
 8. After completion, receiver reviews provider
+
+---
+
+## 🌐 Web Frontend
+
+A companion Next.js application lives in the `web` directory. It's a full-stack
+React app that consumes the API and provides the following features:
+
+- User registration & login (JWT stored in HttpOnly cookies)
+- Role-based dashboards (receiver, provider, admin)
+- Business/service discovery and search
+- Calendar view for time slot selection
+- Appointment booking and management
+- Provider profile editing, service & slot management
+- Review writing and moderation
+
+### Frontend Tech Stack
+
+- **Next.js 14** (app router)
+- **TypeScript**
+- **Tailwind CSS** for styling
+- **React Query** / SWR for data fetching
+
+### Setup
+
+```bash
+cd web
+npm install          # or yarn / pnpm
+npm run dev
+```
+
+App will run at [http://localhost:3000](http://localhost:3000) and expects
+backend at `http://localhost:5000` (configurable via environment variables
+in `.env.local`).
+
+For production builds:
+
+```bash
+npm run build
+npm run start
+```
+
+---
+
+## 🎯 Seed Data
+
+When the application starts, the following categories are seeded:
+
+- **Health** (Clinic, Dental, Psychology, Physiotherapy)
+- **Beauty** (Hairdresser, Makeup, Nail Art)
+- **Fitness** (Personal Trainer, Yoga)
+- **Entertainment** (Escape Room, Bowling)
+- **Education**
+- **Legal & Consulting**
 
 ---
 
