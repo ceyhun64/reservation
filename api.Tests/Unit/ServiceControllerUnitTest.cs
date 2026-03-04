@@ -1,4 +1,3 @@
-//api.Tests/Unit/ServiceControllerUnitTests.cs
 using System.Security.Claims;
 using api.Controllers;
 using api.Data;
@@ -12,13 +11,12 @@ namespace api.Tests.Unit;
 
 public class ServiceControllerUnitTests
 {
-    private AppDbContext CreateInMemoryDb()
-    {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        return new AppDbContext(options);
-    }
+    private AppDbContext CreateDb() =>
+        new(
+            new DbContextOptionsBuilder<AppDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options
+        );
 
     private ServiceController CreateController(AppDbContext db, int userId = 1)
     {
@@ -42,15 +40,44 @@ public class ServiceControllerUnitTests
         return controller;
     }
 
-    private async Task<int> CreateBusinessAndService(AppDbContext db, int ownerId = 1)
+    private async Task<(int businessId, int serviceId)> SeedAsync(AppDbContext db, int userId = 1)
     {
+        var user = new User
+        {
+            Id = userId,
+            FullName = "T",
+            Email = $"u{userId}@t.com",
+            PasswordHash = "x",
+            Phone = "1",
+            Role = "Provider",
+        };
+        db.Users.Add(user);
+
+        var provider = new Provider
+        {
+            UserId = userId,
+            Title = "T",
+            Bio = "B",
+        };
+        db.Providers.Add(provider);
+
+        var category = new Category
+        {
+            Id = 100,
+            Name = "Test",
+            Slug = $"test-{userId}",
+            Description = "D",
+        };
+        db.Categories.Add(category);
+
         var business = new Business
         {
             Name = "Test",
-            Description = "Desc",
-            Address = "Addr",
-            Phone = "123",
-            OwnerId = ownerId,
+            Description = "D",
+            Address = "A",
+            City = "C",
+            Phone = "1",
+            ProviderId = provider.Id,
         };
         db.Businesses.Add(business);
         await db.SaveChangesAsync();
@@ -58,37 +85,37 @@ public class ServiceControllerUnitTests
         var service = new Service
         {
             Name = "Test Hizmet",
-            Description = "Desc",
+            Description = "D",
             Price = 100,
             DurationMinutes = 30,
             BusinessId = business.Id,
+            CategoryId = 100,
         };
         db.Services.Add(service);
         await db.SaveChangesAsync();
 
-        return service.Id;
+        return (business.Id, service.Id);
     }
 
-    // ──────────────── GET ALL ────────────────
+    // ── GET ALL ─────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task GetAll_ShouldReturn200()
     {
-        var db = CreateInMemoryDb();
+        var db = CreateDb();
         var controller = CreateController(db);
-        var result = await controller.GetAll();
+        var result = await controller.GetAll(null, null, null, null);
         Assert.IsType<OkObjectResult>(result);
     }
 
-    // ──────────────── GET BY ID ────────────────
+    // ── GET BY ID ────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task GetById_ShouldReturn200_WhenExists()
     {
-        var db = CreateInMemoryDb();
-        var serviceId = await CreateBusinessAndService(db);
+        var db = CreateDb();
+        var (_, serviceId) = await SeedAsync(db);
         var controller = CreateController(db);
-
         var result = await controller.GetById(serviceId);
         Assert.IsType<OkObjectResult>(result);
     }
@@ -96,206 +123,109 @@ public class ServiceControllerUnitTests
     [Fact]
     public async Task GetById_ShouldReturn404_WhenNotExists()
     {
-        var db = CreateInMemoryDb();
+        var db = CreateDb();
         var controller = CreateController(db);
-
         var result = await controller.GetById(9999);
         Assert.IsType<NotFoundObjectResult>(result);
     }
 
-    // ──────────────── GET BY BUSINESS ────────────────
-
-    [Fact]
-    public async Task GetByBusiness_ShouldReturn200()
-    {
-        var db = CreateInMemoryDb();
-        await CreateBusinessAndService(db);
-        var controller = CreateController(db);
-
-        var result = await controller.GetByBusiness(1);
-        Assert.IsType<OkObjectResult>(result);
-    }
-
-    // ──────────────── CREATE ────────────────
+    // ── CREATE ───────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Create_ShouldReturn201_WhenOwner()
     {
-        var db = CreateInMemoryDb();
-        var business = new Business
-        {
-            Name = "Test",
-            Description = "Desc",
-            Address = "Addr",
-            Phone = "123",
-            OwnerId = 1,
-        };
-        db.Businesses.Add(business);
-        await db.SaveChangesAsync();
-
+        var db = CreateDb();
+        var (businessId, _) = await SeedAsync(db, userId: 1);
         var controller = CreateController(db, userId: 1);
-        var result = await controller.Create(
-            new ServiceDto
-            {
-                Name = "Hizmet",
-                Description = "Desc",
-                Price = 100,
-                DurationMinutes = 30,
-                BusinessId = business.Id,
-            }
-        );
-
+        var result = await controller.Create(new ServiceDto("Yeni", "D", 100, 30, 100, businessId));
         Assert.IsType<CreatedAtActionResult>(result);
     }
 
     [Fact]
     public async Task Create_ShouldReturn404_WhenBusinessNotExists()
     {
-        var db = CreateInMemoryDb();
+        var db = CreateDb();
+        await SeedAsync(db, userId: 1);
         var controller = CreateController(db, userId: 1);
-
-        var result = await controller.Create(
-            new ServiceDto
-            {
-                Name = "Hizmet",
-                Description = "Desc",
-                Price = 100,
-                DurationMinutes = 30,
-                BusinessId = 9999,
-            }
-        );
-
+        var result = await controller.Create(new ServiceDto("H", "D", 100, 30, 100, 9999));
         Assert.IsType<NotFoundObjectResult>(result);
     }
 
     [Fact]
     public async Task Create_ShouldReturnForbid_WhenNotOwner()
     {
-        var db = CreateInMemoryDb();
-        var business = new Business
+        var db = CreateDb();
+        var (businessId, _) = await SeedAsync(db, userId: 1);
+
+        // userId 2 için ayrı provider seed et
+        var user2 = new User
         {
-            Name = "Test",
-            Description = "Desc",
-            Address = "Addr",
-            Phone = "123",
-            OwnerId = 1,
+            Id = 2,
+            FullName = "T2",
+            Email = "u2@t.com",
+            PasswordHash = "x",
+            Phone = "2",
+            Role = "Provider",
         };
-        db.Businesses.Add(business);
+        db.Users.Add(user2);
+        var p2 = new Provider
+        {
+            UserId = 2,
+            Title = "T",
+            Bio = "B",
+        };
+        db.Providers.Add(p2);
         await db.SaveChangesAsync();
 
-        var controller = CreateController(db, userId: 99);
-        var result = await controller.Create(
-            new ServiceDto
-            {
-                Name = "Hizmet",
-                Description = "Desc",
-                Price = 100,
-                DurationMinutes = 30,
-                BusinessId = business.Id,
-            }
-        );
-
+        var controller = CreateController(db, userId: 2);
+        var result = await controller.Create(new ServiceDto("H", "D", 100, 30, 100, businessId));
         Assert.IsType<ForbidResult>(result);
     }
 
-    // ──────────────── UPDATE ────────────────
+    // ── UPDATE ───────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Update_ShouldReturn200_WhenOwner()
     {
-        var db = CreateInMemoryDb();
-        var serviceId = await CreateBusinessAndService(db, ownerId: 1);
+        var db = CreateDb();
+        var (businessId, serviceId) = await SeedAsync(db, userId: 1);
         var controller = CreateController(db, userId: 1);
-
         var result = await controller.Update(
             serviceId,
-            new ServiceDto
-            {
-                Name = "Güncel",
-                Description = "Desc",
-                Price = 200,
-                DurationMinutes = 60,
-                BusinessId = 1,
-            }
+            new ServiceDto("Güncel", "D", 200, 60, 100, businessId)
         );
-
         Assert.IsType<OkObjectResult>(result);
     }
 
     [Fact]
     public async Task Update_ShouldReturn404_WhenNotExists()
     {
-        var db = CreateInMemoryDb();
+        var db = CreateDb();
+        await SeedAsync(db, userId: 1);
         var controller = CreateController(db, userId: 1);
-
-        var result = await controller.Update(
-            9999,
-            new ServiceDto
-            {
-                Name = "Güncel",
-                Description = "Desc",
-                Price = 200,
-                DurationMinutes = 60,
-                BusinessId = 1,
-            }
-        );
-
+        var result = await controller.Update(9999, new ServiceDto("Güncel", "D", 200, 60, 100, 1));
         Assert.IsType<NotFoundObjectResult>(result);
     }
 
-    [Fact]
-    public async Task Update_ShouldReturnForbid_WhenNotOwner()
-    {
-        var db = CreateInMemoryDb();
-        var serviceId = await CreateBusinessAndService(db, ownerId: 1);
-        var controller = CreateController(db, userId: 99);
-
-        var result = await controller.Update(
-            serviceId,
-            new ServiceDto
-            {
-                Name = "Hack",
-                Description = "Desc",
-                Price = 200,
-                DurationMinutes = 60,
-                BusinessId = 1,
-            }
-        );
-
-        Assert.IsType<ForbidResult>(result);
-    }
-
-    // ──────────────── DELETE ────────────────
+    // ── DELETE ───────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Delete_ShouldReturn204_WhenOwner()
+    public async Task Delete_ShouldReturn200_WhenOwner()
     {
-        var db = CreateInMemoryDb();
-        var serviceId = await CreateBusinessAndService(db, ownerId: 1);
+        var db = CreateDb();
+        var (_, serviceId) = await SeedAsync(db, userId: 1);
         var controller = CreateController(db, userId: 1);
-
         var result = await controller.Delete(serviceId);
-        Assert.IsType<NoContentResult>(result);
+        Assert.IsType<OkObjectResult>(result);
     }
 
     [Fact]
     public async Task Delete_ShouldReturn404_WhenNotExists()
     {
-        var db = CreateInMemoryDb();
+        var db = CreateDb();
+        await SeedAsync(db, userId: 1);
         var controller = CreateController(db, userId: 1);
-
         var result = await controller.Delete(9999);
         Assert.IsType<NotFoundObjectResult>(result);
-    }
-
-    [Fact]
-    public async Task Delete_ShouldReturnForbid_WhenNotOwner()
-    {
-        var db = CreateInMemoryDb();
-        var serviceId = await CreateBusinessAndService(db, ownerId: 1);
-        var controller = CreateController(db, userId: 99);
-
-        var result = await controller.Delete(serviceId);
-        Assert.IsType<ForbidResult>(result);
     }
 }

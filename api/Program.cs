@@ -2,13 +2,27 @@ using System.Text;
 using System.Text.Json.Serialization;
 using api.Data;
 using api.Middleware;
+using api.Repositories;
 using api.Services;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Serilog;
+
+Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseSerilog(
+    (ctx, services, cfg) =>
+        cfg
+            .ReadFrom.Configuration(ctx.Configuration)
+            .ReadFrom.Services(services)
+            .Enrich.FromLogContext()
+);
 
 // ── Controllers ───────────────────────────────────────────────────────────────
 builder
@@ -27,6 +41,15 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
 
 // ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<INotificationService, NotificationService>();
+
+// ── Redis Cache ───────────────────────────────────────────────────────────────
+builder.Services.AddStackExchangeRedisCache(opt =>
+    opt.Configuration = builder.Configuration["Redis:ConnectionString"]
+);
+builder.Services.AddScoped<ICacheService, RedisCacheService>();
+
+// ── Repository / Unit of Work ─────────────────────────────────────────────────
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // ── JWT Authentication ────────────────────────────────────────────────────────
 var jwtSecret = builder.Configuration["Jwt:Secret"]!;
@@ -49,6 +72,40 @@ builder
     });
 
 builder.Services.AddAuthorization();
+
+// ── Health Check ──────────────────────────────────────────────────────────────
+builder
+    .Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!)
+    .AddRedis(builder.Configuration["Redis:ConnectionString"]!);
+
+// ── Rate Limiting ─────────────────────────────────────────────────────────────
+builder.Services.AddRateLimiter(opt =>
+{
+    opt.RejectionStatusCode = 429;
+    opt.AddFixedWindowLimiter(
+        "fixed",
+        cfg =>
+        {
+            cfg.Window = TimeSpan.FromMinutes(1);
+            cfg.PermitLimit = 60;
+            cfg.QueueLimit = 0;
+        }
+    );
+    opt.AddFixedWindowLimiter(
+        "auth",
+        cfg =>
+        {
+            cfg.Window = TimeSpan.FromMinutes(1);
+            cfg.PermitLimit = 10;
+            cfg.QueueLimit = 0;
+        }
+    );
+});
+
+// ── FluentValidation ──────────────────────────────────────────────────────────
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 builder.Services.AddCors(opt =>
@@ -121,18 +178,23 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = "swagger";
     });
 }
-
+app.UseSerilogRequestLogging(opt =>
+{
+    opt.MessageTemplate =
+        "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+});
 app.UseCors("WebApp");
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers();
+app.UseRateLimiter();
+app.MapControllers().RequireRateLimiting("fixed");
+app.MapHealthChecks("/health");
 
 // ── Seed ────────────────────────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    // Dev ortamında DB'yi sıfırlayıp yeniden seed'le
     if (app.Environment.IsDevelopment())
     {
         await db.Database.EnsureDeletedAsync();
@@ -154,6 +216,13 @@ using (var scope = app.Services.CreateScope())
         throw;
     }
 }
-app.Run();
+try
+{
+    app.Run();
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 public partial class Program { }

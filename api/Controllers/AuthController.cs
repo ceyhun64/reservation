@@ -6,6 +6,7 @@ using api.Data;
 using api.DTOs;
 using api.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -26,6 +27,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Yeni kullanıcı kaydı</summary>
     [HttpPost("register")]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Register(RegisterDto dto)
     {
         if (await _db.Users.AnyAsync(u => u.Email == dto.Email))
@@ -60,6 +62,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Giriş yap, JWT al</summary>
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Login(LoginDto dto)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);

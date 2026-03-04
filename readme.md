@@ -122,6 +122,31 @@ _(Full endpoint list continues in the Swagger UI.)_
 
 ---
 
+## ⚙️ Core Infrastructure
+
+The backend is built using a clean architecture approach with layered
+responsibilities. Key infrastructure components include:
+
+- **Repository & Unit‑of‑Work Pattern**: `IRepository`, `UnitOfWork` and
+  concrete implementations in `Repositories/` abstract database access
+  allowing easier testing and separation of concerns.
+- **Global Exception Middleware**: a custom middleware (`Middleware/GlobalExceptionMiddleware.cs`)
+  captures unhandled exceptions and returns consistent `ApiResponse`
+  objects with appropriate HTTP status codes.
+- **FluentValidation**: request DTOs are validated using validators in
+  `Validators/` (e.g. `AuthValidator`, `ServiceValidator`), ensuring
+  clean input and localized error messages.
+- **Caching**: a Redis‑backed cache service (`ICacheService` /
+  `RedisCacheService`) is registered along with `StackExchange.Redis`. A set
+  of `CacheKeys` helpers centralize cache key naming.
+- **Data Seeding**: `Data/DataSeeder.cs` populates the database with
+  sample users, providers, businesses, services, time slots, and categories
+  when the application starts.
+
+The DI container is configured in `Program.cs`, registering DbContext,
+services, controllers, authentication, swagger, and the aforementioned
+components.
+
 ## 🔄 Example API Workflow
 
 1. Provider registers → `POST /api/auth/register` (role=Provider)
@@ -189,17 +214,6 @@ When the application starts, the following categories are seeded:
 
 ---
 
-## 🎯 Seed Data
-
-When the application starts, the following categories are seeded:
-
-- **Health** (Clinic, Dental, Psychology, Physiotherapy)
-- **Beauty** (Hairdresser, Makeup, Nail Art)
-- **Fitness** (Personal Trainer, Yoga)
-- **Entertainment** (Escape Room, Bowling)
-- **Education**
-- **Legal & Consulting**
-
 ---
 
 ## 🧩 Testing
@@ -213,6 +227,13 @@ dotnet test
 ```
 
 Coverage reports can be generated with coverlet or similar tools.
+
+### CI Integration
+
+A GitHub Actions workflow (`.github/workflows/ci.yml`) builds the
+solution, runs the test suite, and starts a short‑lived Redis container
+for integration tests. Successful runs provide badges and help maintain
+quality via automated checks.
 
 ---
 
