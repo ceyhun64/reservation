@@ -63,8 +63,12 @@ flowchart TB
    dotnet ef migrations add InitialCreate
    dotnet ef database update
    ```
-3. Configure `appsettings.json` with your PostgreSQL connection string
-   and a strong `Jwt:Key`.
+3. **Configuration**
+   - Update connection strings and JWT key in `appsettings.json` or
+     use environment variables (`ConnectionStrings__Default` and
+     `Jwt__Key`).
+   - The application reads `ASPNETCORE_ENVIRONMENT` to load
+     `appsettings.Development.json` or other profiles.
 4. Run the application:
    ```bash
    dotnet run
@@ -72,8 +76,8 @@ flowchart TB
 5. Open Swagger UI at `http://localhost:5000` for interactive API
    exploration.
 
-> Tip: Use environment-specific configuration (Development/Production)
-> via `appsettings.Development.json`.
+> Tip: Environment variables are prefixed with `DOTNET_` on Windows
+> PowerShell: `setx ConnectionStrings__Default "..."`.
 
 ---
 
@@ -84,8 +88,7 @@ flowchart TB
 | Receiver | Book appointments, cancel, leave reviews                 |
 | Provider | Create time slots, manage appointments, reply to reviews |
 | Business | Manage business profile and services                     |
-| Admin    | Full access including moderation and seed                |
-| data     |
+| Admin    | Full access including moderation and database seeding    |
 
 ---
 
