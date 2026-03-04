@@ -58,3 +58,6 @@ desktop.ini
 **/coverage/
 *.coverage
 *.coveragexml
+
+api/Properties/launchSettings.json
+api/api.http
