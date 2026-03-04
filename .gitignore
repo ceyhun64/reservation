@@ -1,7 +1,60 @@
+# ===========================
+# .NET / C#
+# ===========================
 **/bin/
 **/obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.nupkg
+*.snupkg
+**/logs/
+*.log
+
+# ===========================
+# Environment & Secrets
+# ===========================
 **/.env
 **/.env.local
+**/.env*.local
 **/appsettings.Development.json
+**/appsettings.*.json
+!**/appsettings.json
+
+# ===========================
+# Next.js / Node
+# ===========================
 web/.next/
 web/node_modules/
+web/out/
+web/.vercel/
+web/npm-debug.log*
+web/yarn-debug.log*
+web/yarn-error.log*
+web/.pnpm-debug.log*
+
+# ===========================
+# Redis / DB
+# ===========================
+*.db
+*.sqlite
+dump.rdb
+
+# ===========================
+# IDE / OS
+# ===========================
+.idea/
+.vscode/
+*.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===========================
+# Test & Coverage
+# ===========================
+**/TestResults/
+**/coverage/
+*.coverage
+*.coveragexml
