@@ -133,6 +133,7 @@ builder.Services.AddRateLimiter(opt =>
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
+builder.Services.AddScoped<IEmailService, EmailService>();
 // ── CORS ──────────────────────────────────────────────────────────────────────
 // AllowCredentials() — SignalR WebSocket için zorunlu!
 builder.Services.AddCors(opt =>

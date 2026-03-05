@@ -17,14 +17,16 @@ public class AppointmentController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly INotificationService _notify;
+    private readonly IEmailService _email; // ← eklendi
 
-    public AppointmentController(AppDbContext db, INotificationService notify)
+    public AppointmentController(AppDbContext db, INotificationService notify, IEmailService email) // ← eklendi
     {
         _db = db;
         _notify = notify;
+        _email = email;
     }
 
-    // ── GET: Müşterinin kendi randevuları ─────────────────────────────────────
+    // ── GET: Müşterinin kendi randevuları ─────────────────────
     [HttpGet("my")]
     public async Task<ActionResult<ApiResponse<PagedResponse<AppointmentResponseDto>>>> GetMine(
         [FromQuery] AppointmentFilterDto filter
@@ -48,7 +50,7 @@ public class AppointmentController : ControllerBase
         );
     }
 
-    // ── GET: Provider olarak gelen randevular ─────────────────────────────────
+    // ── GET: Provider olarak gelen randevular ─────────────────
     [HttpGet("provider")]
     [Authorize(Roles = "Provider,Admin")]
     public async Task<
@@ -81,7 +83,7 @@ public class AppointmentController : ControllerBase
         );
     }
 
-    // ── GET: İşletmenin randevuları ───────────────────────────────────────────
+    // ── GET: İşletmenin randevuları ───────────────────────────
     [HttpGet("business/{businessId}")]
     [Authorize(Roles = "Provider,Admin")]
     public async Task<
@@ -113,7 +115,7 @@ public class AppointmentController : ControllerBase
         );
     }
 
-    // ── POST: Randevu oluştur ─────────────────────────────────────────────────
+    // ── POST: Randevu oluştur ─────────────────────────────────
     [HttpPost]
     public async Task<ActionResult<ApiResponse<AppointmentResponseDto>>> Create(
         AppointmentCreateDto dto
@@ -121,7 +123,6 @@ public class AppointmentController : ControllerBase
     {
         var receiverId = GetUserId();
 
-        // Slot kontrolü
         var slot = await _db.TimeSlots.FindAsync(dto.TimeSlotId);
         if (slot is null || slot.ProviderId != dto.ProviderId)
             return BadRequest(ApiResponse<AppointmentResponseDto>.Fail("Geçersiz zaman slotu."));
@@ -130,14 +131,11 @@ public class AppointmentController : ControllerBase
                 ApiResponse<AppointmentResponseDto>.Fail("Bu slot artık müsait değil.")
             );
 
-        // Servis kontrolü
         var service = await _db
             .Services.Include(s => s.Business)
             .FirstOrDefaultAsync(s => s.Id == dto.ServiceId && s.IsActive);
-
         if (service is null)
             return NotFound(ApiResponse<AppointmentResponseDto>.Fail("Hizmet bulunamadı."));
-
         if (service.Business.ProviderId != dto.ProviderId)
             return BadRequest(
                 ApiResponse<AppointmentResponseDto>.Fail("Bu provider söz konusu hizmeti sunmuyor.")
@@ -163,11 +161,20 @@ public class AppointmentController : ControllerBase
         slot.AppointmentId = appointment.Id;
         await _db.SaveChangesAsync();
 
-        // ── Bildirimler: müşteriye + provider'a (SignalR push dahil) ──────────
+        // ── Eager load ilişkiler ───────────────────────────────
         var provider = await _db
             .Providers.Include(p => p.User)
             .FirstAsync(p => p.Id == dto.ProviderId);
+        var receiver = await _db.Users.FindAsync(receiverId);
 
+        await _db.Entry(appointment).Reference(a => a.Receiver).LoadAsync();
+        await _db.Entry(appointment).Reference(a => a.Provider).LoadAsync();
+        await _db.Entry(appointment.Provider).Reference(p => p.User).LoadAsync();
+        await _db.Entry(appointment).Reference(a => a.Service).LoadAsync();
+        await _db.Entry(appointment.Service).Reference(s => s.Category).LoadAsync();
+        await _db.Entry(appointment.Service).Reference(s => s.Business).LoadAsync();
+
+        // ── SignalR bildirimleri ───────────────────────────────
         await _notify.SendAsync(
             receiverId,
             "Randevu Alındı",
@@ -182,14 +189,11 @@ public class AppointmentController : ControllerBase
             "Info",
             appointment.Id
         );
-        // ─────────────────────────────────────────────────────────────────────
 
-        await _db.Entry(appointment).Reference(a => a.Receiver).LoadAsync();
-        await _db.Entry(appointment).Reference(a => a.Provider).LoadAsync();
-        await _db.Entry(appointment.Provider).Reference(p => p.User).LoadAsync();
-        await _db.Entry(appointment).Reference(a => a.Service).LoadAsync();
-        await _db.Entry(appointment.Service).Reference(s => s.Category).LoadAsync();
-        await _db.Entry(appointment.Service).Reference(s => s.Business).LoadAsync();
+        // ── Email bildirimleri (hem müşteriye hem provider'a) ──
+        var emailDto = BuildEmailDto(appointment, receiver!, provider);
+        await _email.SendAppointmentCreatedAsync(emailDto);
+        // ──────────────────────────────────────────────────────
 
         return CreatedAtAction(
             nameof(GetMine),
@@ -201,7 +205,7 @@ public class AppointmentController : ControllerBase
         );
     }
 
-    // ── PATCH: Durum güncelle (Provider) ─────────────────────────────────────
+    // ── PATCH: Durum güncelle (Provider) ──────────────────────
     [HttpPatch("{id}/status")]
     [Authorize(Roles = "Provider,Admin")]
     public async Task<ActionResult<ApiResponse<AppointmentResponseDto>>> UpdateStatus(
@@ -238,13 +242,13 @@ public class AppointmentController : ControllerBase
                 "Randevu: Gelmedi",
                 $"{appt.StartTime:dd.MM.yyyy HH:mm} tarihli randevunuz 'Gelmedi' olarak işaretlendi."
             ),
-            _ => throw new ArgumentException("Geçersiz aksiyon. (confirm/reject/complete/noshow)"),
+            _ => throw new ArgumentException("Geçersiz aksiyon."),
         };
 
         if (!IsValidTransition(appt.Status, newStatus))
             return BadRequest(
                 ApiResponse<AppointmentResponseDto>.Fail(
-                    $"'{appt.Status}' durumundan '{newStatus}' durumuna geçiş yapılamaz."
+                    $"'{appt.Status}' → '{newStatus}' geçişi yapılamaz."
                 )
             );
 
@@ -264,20 +268,25 @@ public class AppointmentController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        // ── SignalR push: müşteriye gerçek zamanlı bildirim ───────────────────
+        // ── SignalR push ───────────────────────────────────────
         await _notify.SendAppointmentStatusChangedAsync(
-            userId: appt.ReceiverId,
-            appointmentId: appt.Id,
-            newStatus: newStatus.ToString(),
-            serviceName: appt.Service.Name,
-            appointmentDate: appt.StartTime
+            appt.ReceiverId,
+            appt.Id,
+            newStatus.ToString(),
+            appt.Service.Name,
+            appt.StartTime
         );
-        // ─────────────────────────────────────────────────────────────────────
+
+        // ── Email ──────────────────────────────────────────────
+        var receiver = await _db.Users.FindAsync(appt.ReceiverId);
+        var emailDto = BuildEmailDto(appt, receiver!, appt.Provider);
+        await _email.SendAppointmentStatusChangedAsync(emailDto, newStatus.ToString(), dto.Reason);
+        // ──────────────────────────────────────────────────────
 
         return Ok(ApiResponse<AppointmentResponseDto>.Ok(ToDto(appt)));
     }
 
-    // ── PATCH: İptal et (Müşteri) ─────────────────────────────────────────────
+    // ── PATCH: İptal et (Müşteri) ─────────────────────────────
     [HttpPatch("{id}/cancel")]
     public async Task<ActionResult<ApiResponse<object?>>> Cancel(int id, [FromBody] CancelDto dto)
     {
@@ -297,10 +306,9 @@ public class AppointmentController : ControllerBase
 
         if (appt.TimeSlot is not null)
             appt.TimeSlot.Status = SlotStatus.Available;
-
         await _db.SaveChangesAsync();
 
-        // ── SignalR push: provider'a iptal bildirimi ──────────────────────────
+        // ── SignalR: provider'a bildir ─────────────────────────
         await _notify.SendAsync(
             appt.Provider.UserId,
             "Randevu İptal Edildi",
@@ -308,12 +316,35 @@ public class AppointmentController : ControllerBase
             "Warning",
             appt.Id
         );
-        // ─────────────────────────────────────────────────────────────────────
+
+        // ── Email: provider'a iptal maili ──────────────────────
+        var receiver = await _db.Users.FindAsync(appt.ReceiverId);
+        var emailDto = BuildEmailDto(appt, receiver!, appt.Provider);
+        await _email.SendAppointmentStatusChangedAsync(emailDto, "CancelledByReceiver", dto.Reason);
+        // ──────────────────────────────────────────────────────
 
         return Ok(ApiResponse<object?>.Ok(null, "Randevu iptal edildi."));
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ─── Helpers ──────────────────────────────────────────────
+
+    /// <summary>Email DTO'sunu appointment'tan oluşturur.</summary>
+    private static AppointmentEmailDto BuildEmailDto(
+        Appointment appt,
+        User receiver,
+        Provider provider
+    ) =>
+        new(
+            ReceiverEmail: receiver.Email,
+            ReceiverName: receiver.FullName,
+            ProviderEmail: provider.User!.Email,
+            ProviderName: provider.User.FullName,
+            ServiceName: appt.Service?.Name ?? "",
+            BusinessName: appt.Service?.Business?.Name ?? "",
+            AppointmentDate: appt.StartTime,
+            Price: appt.PricePaid,
+            AppointmentId: appt.Id
+        );
 
     private static bool IsValidTransition(AppointmentStatus from, AppointmentStatus to) =>
         (from, to) switch
@@ -342,9 +373,9 @@ public class AppointmentController : ControllerBase
     {
         if (
             !string.IsNullOrWhiteSpace(f.Status)
-            && Enum.TryParse<AppointmentStatus>(f.Status, out var status)
+            && Enum.TryParse<AppointmentStatus>(f.Status, out var s)
         )
-            q = q.Where(a => a.Status == status);
+            q = q.Where(a => a.Status == s);
         if (f.From.HasValue)
             q = q.Where(a => a.StartTime >= f.From);
         if (f.To.HasValue)

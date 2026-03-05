@@ -1,10 +1,12 @@
 "use client";
 
-import { useSession,  } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useDashboardStats } from "@/hooks/use-dashboard-stats";
+import { useSignalR } from "@/hooks/use-signalr";
+import { toast } from "sonner";
 
 import {
   LayoutDashboard,
@@ -16,8 +18,7 @@ import {
   User,
 } from "lucide-react";
 
-// ─── Nav definitions ─────────────────────────────────────────────────────────
-
+// ─── Nav definitions ──────────────────────────────────────────
 const NAV_ITEMS = {
   Provider: [
     { label: "Panel", href: "/dashboard", icon: LayoutDashboard },
@@ -43,25 +44,51 @@ const NAV_ITEMS = {
   ],
 } as const;
 
-const ROLE_LABEL: Record<string, string> = {
-  Provider: "İşletme Sahibi",
-  Receiver: "Müşteri",
-};
-
-// ─── BottomBar ────────────────────────────────────────────────────────────────
-
+// ─── BottomBar ────────────────────────────────────────────────
 export default function DashboardBottomBar() {
   const { data: session } = useSession();
-  const { notifications, appointments } = useDashboardStats(); // Verileri al
+  const { appointments } = useDashboardStats();
   const pathname = usePathname();
+
+  // ── SignalR: gerçek zamanlı bildirim sayısı + toast ────────
+  const { unreadCount, isConnected } = useSignalR({
+    onNotification: (payload) => {
+      // Kullanıcı zaten bildirimler sayfasındaysa toast gösterme
+      if (pathname === "/dashboard/notifications") return;
+
+      toast(payload.title, {
+        description: payload.message,
+        duration: 5000,
+        icon: payload.type === "appointment" ? "📅" : "🔔",
+      });
+    },
+    onAppointmentStatusChanged: (payload) => {
+      if (pathname === "/dashboard/notifications") return;
+
+      const emoji =
+        {
+          Confirmed: "✅",
+          Cancelled: "❌",
+          Completed: "🎉",
+          Pending: "⏳",
+        }[payload.newStatus] ?? "🔔";
+
+      toast(`${emoji} Randevu güncellendi`, {
+        description: `${payload.serviceName} — ${new Date(
+          payload.appointmentDate,
+        ).toLocaleString("tr-TR")}`,
+        duration: 6000,
+      });
+    },
+  });
+  // ──────────────────────────────────────────────────────────
 
   const role = (session?.user?.role as keyof typeof NAV_ITEMS) ?? "Receiver";
   const navItems = NAV_ITEMS[role] ?? NAV_ITEMS.Receiver;
 
-  // Sayı eşleştirme fonksiyonu
   const getBadgeCount = (label: string) => {
-    if (label === "Bildirimler") return notifications;
-    if (label === "Randevular") return appointments;
+    if (label === "Bildirimlerim") return unreadCount; // ← SignalR'dan
+    if (label === "Randevularım") return appointments; // ← REST'ten
     return 0;
   };
 
@@ -70,7 +97,7 @@ export default function DashboardBottomBar() {
       <div className="flex items-stretch justify-around max-w-xl mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const count = getBadgeCount(item.label); // Sayıyı al
+          const count = getBadgeCount(item.label);
           const active =
             pathname === item.href ||
             (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -85,14 +112,34 @@ export default function DashboardBottomBar() {
               )}
             >
               <div className="relative flex items-center justify-center">
-                <Icon className="size-5" />
-                {/* ROZET BURADA: Eğer count 0'dan büyükse göster */}
+                <Icon
+                  className={cn(
+                    "size-5 transition-transform",
+                    // Bildirim ikonu bağlantı durumuna göre renk alır
+                    item.label === "Bildirimlerim" && !isConnected
+                      ? "text-muted-foreground/50"
+                      : "",
+                  )}
+                />
+
+                {/* Okunmamış rozet */}
                 {count > 0 && (
                   <span className="absolute -top-2 -right-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white ring-2 ring-background">
                     {count > 9 ? "9+" : count}
                   </span>
                 )}
+
+                {/* SignalR canlı bağlantı noktası — sadece bildirim ikonunda */}
+                {item.label === "Bildirimlerim" && (
+                  <span
+                    className={cn(
+                      "absolute -bottom-0.5 -right-0.5 size-1.5 rounded-full ring-1 ring-background",
+                      isConnected ? "bg-green-400" : "bg-gray-300",
+                    )}
+                  />
+                )}
               </div>
+
               <span
                 className={cn(
                   "text-[10px]",

@@ -13,6 +13,7 @@
 │   │   ├── AppointmentControllerUnitTest.cs
 │   │   ├── AuthControllerUnitTest.cs
 │   │   ├── BusinessControllerUnitTest.cs
+│   │   ├── NotificationServiceUnitTest.cs
 │   │   └── ServiceControllerUnitTest.cs
 │   └── api.Tests.csproj
 ├── api
@@ -42,6 +43,9 @@
 │   │   ├── AppDbContext.cs
 │   │   └── DataSeeder.cs
 │   ├── DockerFile
+│   ├── Hubs
+│   │   ├── INotificationHub.cs
+│   │   └── NotificationHub.cs
 │   ├── Middleware
 │   │   └── GlobalExceptionMiddleware.cs
 │   ├── Migrations
@@ -83,11 +87,11 @@
 │   ├── api.csproj
 │   └── appsettings.json
 ├── docker-compose.yml
+├── project_tree.txt
 ├── readme.md
 ├── reservation.sln
 └── web
     ├── .gitignore
-    ├── README.md
     ├── app
     │   ├── admin
     │   │   ├── appointments
@@ -160,6 +164,7 @@
     │   │   ├── ClientLayoutWrapper.tsx
     │   │   ├── Footer.tsx
     │   │   ├── Navbar.tsx
+    │   │   ├── NotificationBell.tsx
     │   │   └── Providers.tsx
     │   ├── modules
     │   │   ├── admin
@@ -280,7 +285,8 @@
     ├── eslint.config.mjs
     ├── hooks
     │   ├── use-dashboard-stats.ts
-    │   └── use-mobile.ts
+    │   ├── use-mobile.ts
+    │   └── use-signalr.ts
     ├── lib
     │   ├── api
     │   │   ├── appointments.api.ts

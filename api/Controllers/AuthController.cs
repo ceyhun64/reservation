@@ -5,6 +5,7 @@ using api.Common;
 using api.Data;
 using api.DTOs;
 using api.Models;
+using api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -18,11 +19,13 @@ public class AuthController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IConfiguration _config;
+    private readonly IEmailService _email; // ← eklendi
 
-    public AuthController(AppDbContext db, IConfiguration config)
+    public AuthController(AppDbContext db, IConfiguration config, IEmailService email)
     {
         _db = db;
         _config = config;
+        _email = email;
     }
 
     /// <summary>Yeni kullanıcı kaydı</summary>
@@ -50,6 +53,10 @@ public class AuthController : ControllerBase
 
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
+
+        // ── Hoş geldin emaili gönder ──────────────────────────
+        await _email.SendWelcomeAsync(user.Email, user.FullName, user.Role);
+        // ──────────────────────────────────────────────────────
 
         var token = GenerateToken(user);
         return Ok(
