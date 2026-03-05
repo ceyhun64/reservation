@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using api.Data;
+using api.Hubs;
 using api.Middleware;
 using api.Repositories;
 using api.Services;
@@ -39,6 +40,14 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
+// ── SignalR ───────────────────────────────────────────────────────────────────
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+});
+
 // ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
@@ -68,6 +77,23 @@ builder
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
             ClockSkew = TimeSpan.Zero,
+        };
+
+        // SignalR WebSocket bağlantısı için JWT token query string'den okunur
+        // (WebSocket başlık taşıyamaz, bu yüzden gerekli)
+        opt.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            },
         };
     });
 
@@ -108,6 +134,7 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
+// AllowCredentials() — SignalR WebSocket için zorunlu!
 builder.Services.AddCors(opt =>
     opt.AddPolicy(
         "WebApp",
@@ -115,6 +142,7 @@ builder.Services.AddCors(opt =>
             p.WithOrigins("http://localhost:3000", "http://localhost:5191")
                 .AllowAnyHeader()
                 .AllowAnyMethod()
+                .AllowCredentials() // ← SignalR için eklendi
     )
 );
 
@@ -178,19 +206,22 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = "swagger";
     });
 }
+
 app.UseSerilogRequestLogging(opt =>
 {
     opt.MessageTemplate =
         "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
 });
-app.UseCors("WebApp");
+
+app.UseCors("WebApp"); // ← CORS önce
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 app.MapControllers().RequireRateLimiting("fixed");
 app.MapHealthChecks("/health");
+app.MapHub<NotificationHub>("/hubs/notifications"); // ← SignalR endpoint
 
-// ── Seed ────────────────────────────────────────────────────────────────────
+// ── Seed ──────────────────────────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -216,6 +247,7 @@ using (var scope = app.Services.CreateScope())
         throw;
     }
 }
+
 try
 {
     app.Run();

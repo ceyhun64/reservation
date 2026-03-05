@@ -1,0 +1,312 @@
+├── .github
+│   └── workflows
+│       └── ci.yml
+├── .gitignore
+├── api.Tests
+│   ├── Integration
+│   │   ├── AppointmentControllerTest.cs
+│   │   ├── AuthControllerTest.cs
+│   │   ├── BusinessControllerTest.cs
+│   │   ├── ServiceControllerTest.cs
+│   │   └── TestFactory.cs
+│   ├── Unit
+│   │   ├── AppointmentControllerUnitTest.cs
+│   │   ├── AuthControllerUnitTest.cs
+│   │   ├── BusinessControllerUnitTest.cs
+│   │   └── ServiceControllerUnitTest.cs
+│   └── api.Tests.csproj
+├── api
+│   ├── .gitignore
+│   ├── Common
+│   │   └── Apiresponse.cs
+│   ├── Controllers
+│   │   ├── AppointmentController.cs
+│   │   ├── AuthController.cs
+│   │   ├── BusinessController.cs
+│   │   ├── CategoryController.cs
+│   │   ├── NotificationController.cs
+│   │   ├── ProviderController.cs
+│   │   ├── ReviewController.cs
+│   │   ├── ServiceController.cs
+│   │   └── TimeSlotController.cs
+│   ├── DTOs
+│   │   ├── AppointmentDto.cs
+│   │   ├── AuthDto.cs
+│   │   ├── BusinessDto.cs
+│   │   ├── CategoryDto.cs
+│   │   ├── ProviderDto.cs
+│   │   ├── ReviewDto.cs
+│   │   ├── ServiceDto.cs
+│   │   └── TimeSlotDto.cs
+│   ├── Data
+│   │   ├── AppDbContext.cs
+│   │   └── DataSeeder.cs
+│   ├── DockerFile
+│   ├── Middleware
+│   │   └── GlobalExceptionMiddleware.cs
+│   ├── Migrations
+│   │   ├── 20260228084929_InitialCreate.Designer.cs
+│   │   ├── 20260228084929_InitialCreate.cs
+│   │   ├── 20260302105446_UpdateModelChanges.Designer.cs
+│   │   ├── 20260302105446_UpdateModelChanges.cs
+│   │   └── AppDbContextModelSnapshot.cs
+│   ├── Models
+│   │   ├── Appointment.cs
+│   │   ├── Business.cs
+│   │   ├── Category.cs
+│   │   ├── Notification.cs
+│   │   ├── Provider.cs
+│   │   ├── Review.cs
+│   │   ├── Service.cs
+│   │   ├── TimeSlot.cs
+│   │   └── User.cs
+│   ├── Program.cs
+│   ├── Repositories
+│   │   ├── IRepository.cs
+│   │   ├── IUnitOfWork.cs
+│   │   ├── Repository.cs
+│   │   └── UnitOfWork.cs
+│   ├── Services
+│   │   ├── CacheKeys.cs
+│   │   ├── ICacheService.cs
+│   │   ├── NotificationService.cs
+│   │   └── RedisCacheServices.cs
+│   ├── Validators
+│   │   ├── AppointmentValidator.cs
+│   │   ├── AuthValidator.cs
+│   │   ├── BusinessValidator.cs
+│   │   ├── CategoryValidator.cs
+│   │   ├── ProviderValidator.cs
+│   │   ├── ReviewValidator.cs
+│   │   ├── ServiceValidator.cs
+│   │   └── TimeSlotValidator.cs
+│   ├── api.csproj
+│   └── appsettings.json
+├── docker-compose.yml
+├── readme.md
+├── reservation.sln
+└── web
+    ├── .gitignore
+    ├── README.md
+    ├── app
+    │   ├── admin
+    │   │   ├── appointments
+    │   │   │   └── page.tsx
+    │   │   ├── businesses
+    │   │   │   └── page.tsx
+    │   │   ├── categories
+    │   │   │   └── page.tsx
+    │   │   ├── dashboard
+    │   │   │   └── page.tsx
+    │   │   ├── layout.tsx
+    │   │   ├── notifications
+    │   │   │   └── page.tsx
+    │   │   ├── page.tsx
+    │   │   ├── providers
+    │   │   │   └── page.tsx
+    │   │   ├── reviews
+    │   │   │   └── page.tsx
+    │   │   ├── services
+    │   │   │   └── page.tsx
+    │   │   └── users
+    │   │       └── page.tsx
+    │   ├── api
+    │   │   └── auth
+    │   │       └── [...nextauth]
+    │   │           └── route.ts
+    │   ├── auth
+    │   │   ├── login
+    │   │   │   └── page.tsx
+    │   │   └── register
+    │   │       └── page.tsx
+    │   ├── businesses
+    │   │   ├── [id]
+    │   │   │   └── page.tsx
+    │   │   └── page.tsx
+    │   ├── dashboard
+    │   │   ├── appointments
+    │   │   │   └── page.tsx
+    │   │   ├── businesses
+    │   │   │   ├── [id]
+    │   │   │   │   ├── page.tsx
+    │   │   │   │   └── services
+    │   │   │   │       └── page.tsx
+    │   │   │   ├── new
+    │   │   │   │   └── page.tsx
+    │   │   │   └── page.tsx
+    │   │   ├── layout.tsx
+    │   │   ├── notifications
+    │   │   │   └── page.tsx
+    │   │   ├── page.tsx
+    │   │   ├── profile
+    │   │   │   └── page.tsx
+    │   │   └── services
+    │   │       ├── [id]
+    │   │       │   └── page.tsx
+    │   │       └── page.tsx
+    │   ├── favicon.ico
+    │   ├── globals.css
+    │   ├── layout.tsx
+    │   ├── not-found.tsx
+    │   ├── page.tsx
+    │   └── services
+    │       ├── [id]
+    │       │   └── page.tsx
+    │       └── page.tsx
+    ├── components.json
+    ├── components
+    │   ├── layout
+    │   │   ├── BottomBar.tsx
+    │   │   ├── ClientLayoutWrapper.tsx
+    │   │   ├── Footer.tsx
+    │   │   ├── Navbar.tsx
+    │   │   └── Providers.tsx
+    │   ├── modules
+    │   │   ├── admin
+    │   │   │   ├── AdminShared.tsx
+    │   │   │   ├── AdminSidebar.tsx
+    │   │   │   ├── appointments
+    │   │   │   │   └── AdminAppointments.tsx
+    │   │   │   ├── businesses
+    │   │   │   │   └── AdminBusinesses.tsx
+    │   │   │   ├── categories
+    │   │   │   │   └── AdminCategories.tsx
+    │   │   │   ├── dashboard
+    │   │   │   │   └── AdminDashboard.tsx
+    │   │   │   ├── login
+    │   │   │   │   └── AdminLogin.tsx
+    │   │   │   ├── notifications
+    │   │   │   │   └── AdminNotifications.tsx
+    │   │   │   ├── providers
+    │   │   │   │   └── AdminProviders.tsx
+    │   │   │   ├── reviews
+    │   │   │   │   └── AdminReviews.tsx
+    │   │   │   ├── services
+    │   │   │   │   └── AdminServices.tsx
+    │   │   │   └── users
+    │   │   │       └── AdminUsers.tsx
+    │   │   ├── appointments
+    │   │   │   └── AppointmentForm.tsx
+    │   │   ├── auth
+    │   │   │   ├── Login.tsx
+    │   │   │   └── Register.tsx
+    │   │   ├── businesses
+    │   │   │   ├── Businesses.tsx
+    │   │   │   └── BusinessesDetail.tsx
+    │   │   ├── dashboard
+    │   │   │   ├── Appointments.tsx
+    │   │   │   ├── DashboardShared.tsx
+    │   │   │   ├── Layout.tsx
+    │   │   │   ├── Notifications.tsx
+    │   │   │   ├── Profile.tsx
+    │   │   │   ├── business
+    │   │   │   │   ├── AddServiceForm.tsx
+    │   │   │   │   ├── BusinessAppointment.tsx
+    │   │   │   │   ├── BusinessDashboard.tsx
+    │   │   │   │   ├── BusinessDetail.tsx
+    │   │   │   │   ├── BusinessList.tsx
+    │   │   │   │   ├── BusinessService.tsx
+    │   │   │   │   ├── NewBusiness.tsx
+    │   │   │   │   ├── ProviderServices.tsx
+    │   │   │   │   └── ServiceDetail.tsx
+    │   │   │   └── receiver
+    │   │   │       ├── ReceiverAppointment.tsx
+    │   │   │       └── ReceiverDashboard.tsx
+    │   │   ├── home
+    │   │   │   ├── Banner.tsx
+    │   │   │   ├── Hero.tsx
+    │   │   │   ├── HowItWorks.tsx
+    │   │   │   └── Properties.tsx
+    │   │   └── services
+    │   │       ├── ServiceDetail.tsx
+    │   │       └── Services.tsx
+    │   └── ui
+    │       ├── accordion.tsx
+    │       ├── alert-dialog.tsx
+    │       ├── alert.tsx
+    │       ├── aspect-ratio.tsx
+    │       ├── avatar.tsx
+    │       ├── badge.tsx
+    │       ├── breadcrumb.tsx
+    │       ├── button-group.tsx
+    │       ├── button.tsx
+    │       ├── calendar.tsx
+    │       ├── card.tsx
+    │       ├── carousel.tsx
+    │       ├── chart.tsx
+    │       ├── checkbox.tsx
+    │       ├── collapsible.tsx
+    │       ├── combobox.tsx
+    │       ├── command.tsx
+    │       ├── context-menu.tsx
+    │       ├── dialog.tsx
+    │       ├── direction.tsx
+    │       ├── drawer.tsx
+    │       ├── dropdown-menu.tsx
+    │       ├── empty.tsx
+    │       ├── field.tsx
+    │       ├── form.tsx
+    │       ├── hover-card.tsx
+    │       ├── input-group.tsx
+    │       ├── input-otp.tsx
+    │       ├── input.tsx
+    │       ├── item.tsx
+    │       ├── kbd.tsx
+    │       ├── label.tsx
+    │       ├── menubar.tsx
+    │       ├── native-select.tsx
+    │       ├── navigation-menu.tsx
+    │       ├── pagination.tsx
+    │       ├── popover.tsx
+    │       ├── progress.tsx
+    │       ├── radio-group.tsx
+    │       ├── resizable.tsx
+    │       ├── scroll-area.tsx
+    │       ├── select.tsx
+    │       ├── separator.tsx
+    │       ├── sheet.tsx
+    │       ├── sidebar.tsx
+    │       ├── skeleton.tsx
+    │       ├── slider.tsx
+    │       ├── sonner.tsx
+    │       ├── spinner.tsx
+    │       ├── switch.tsx
+    │       ├── table.tsx
+    │       ├── tabs.tsx
+    │       ├── textarea.tsx
+    │       ├── toggle-group.tsx
+    │       ├── toggle.tsx
+    │       └── tooltip.tsx
+    ├── eslint.config.mjs
+    ├── hooks
+    │   ├── use-dashboard-stats.ts
+    │   └── use-mobile.ts
+    ├── lib
+    │   ├── api
+    │   │   ├── appointments.api.ts
+    │   │   ├── auth.api.ts
+    │   │   ├── businesses.api.ts
+    │   │   ├── categories.api.ts
+    │   │   ├── client.ts
+    │   │   ├── index.ts
+    │   │   ├── notifications.api.ts
+    │   │   ├── providers.api.ts
+    │   │   ├── reviews.api.ts
+    │   │   ├── services.api.ts
+    │   │   └── timeslots.api.ts
+    │   ├── auth.ts
+    │   └── utils.ts
+    ├── next.config.ts
+    ├── package-lock.json
+    ├── package.json
+    ├── postcss.config.mjs
+    ├── public
+    │   ├── file.svg
+    │   ├── globe.svg
+    │   ├── next.svg
+    │   ├── vercel.svg
+    │   └── window.svg
+    ├── tsconfig.json
+    └── types
+        ├── index.ts
+        └── next-auth.d.ts

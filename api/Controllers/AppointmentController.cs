@@ -130,7 +130,7 @@ public class AppointmentController : ControllerBase
                 ApiResponse<AppointmentResponseDto>.Fail("Bu slot artık müsait değil.")
             );
 
-        // Servis kontrolü - servis bu provider'a ait bir işletmenin hizmeti mi?
+        // Servis kontrolü
         var service = await _db
             .Services.Include(s => s.Business)
             .FirstOrDefaultAsync(s => s.Id == dto.ServiceId && s.IsActive);
@@ -163,10 +163,11 @@ public class AppointmentController : ControllerBase
         slot.AppointmentId = appointment.Id;
         await _db.SaveChangesAsync();
 
-        // Bildirimler
+        // ── Bildirimler: müşteriye + provider'a (SignalR push dahil) ──────────
         var provider = await _db
             .Providers.Include(p => p.User)
             .FirstAsync(p => p.Id == dto.ProviderId);
+
         await _notify.SendAsync(
             receiverId,
             "Randevu Alındı",
@@ -181,6 +182,7 @@ public class AppointmentController : ControllerBase
             "Info",
             appointment.Id
         );
+        // ─────────────────────────────────────────────────────────────────────
 
         await _db.Entry(appointment).Reference(a => a.Receiver).LoadAsync();
         await _db.Entry(appointment).Reference(a => a.Provider).LoadAsync();
@@ -261,13 +263,16 @@ public class AppointmentController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
-        await _notify.SendAsync(
-            appt.ReceiverId,
-            notifyTitle,
-            notifyMsg,
-            newStatus == AppointmentStatus.Confirmed ? "Success" : "Warning",
-            appt.Id
+
+        // ── SignalR push: müşteriye gerçek zamanlı bildirim ───────────────────
+        await _notify.SendAppointmentStatusChangedAsync(
+            userId: appt.ReceiverId,
+            appointmentId: appt.Id,
+            newStatus: newStatus.ToString(),
+            serviceName: appt.Service.Name,
+            appointmentDate: appt.StartTime
         );
+        // ─────────────────────────────────────────────────────────────────────
 
         return Ok(ApiResponse<AppointmentResponseDto>.Ok(ToDto(appt)));
     }
@@ -294,6 +299,8 @@ public class AppointmentController : ControllerBase
             appt.TimeSlot.Status = SlotStatus.Available;
 
         await _db.SaveChangesAsync();
+
+        // ── SignalR push: provider'a iptal bildirimi ──────────────────────────
         await _notify.SendAsync(
             appt.Provider.UserId,
             "Randevu İptal Edildi",
@@ -301,6 +308,7 @@ public class AppointmentController : ControllerBase
             "Warning",
             appt.Id
         );
+        // ─────────────────────────────────────────────────────────────────────
 
         return Ok(ApiResponse<object?>.Ok(null, "Randevu iptal edildi."));
     }
@@ -397,6 +405,5 @@ public class AppointmentController : ControllerBase
         return provider?.Id == providerId;
     }
 }
-
 
 public record CancelDto(string? Reason);
