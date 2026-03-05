@@ -1,12 +1,9 @@
 # Universal Appointment System — Backend API
 
-> **Professional README for hiring purposes**
-
 A scalable, multi-tenant appointment management system designed for any
 industry—healthcare, beauty, education, fitness, legal services, and more.
 Built with clean architecture, JWT authentication, and PostgreSQL for data
-persistence. This document provides an overview of the project, its
-architecture, setup instructions, API documentation, and usage examples.
+persistence.
 
 ---
 
@@ -22,9 +19,12 @@ fully documented using Swagger and supports role-based access control.
 - .NET 8 (ASP.NET Core Web API)
 - Entity Framework Core with Npgsql (PostgreSQL)
 - JWT Authentication
+- Redis (StackExchange.Redis)
 - Swagger / OpenAPI
+- FluentValidation
+- Serilog
 - xUnit & Moq for unit and integration tests
-- Docker (optional for containerized deployment)
+- Docker / Docker Compose
 
 ---
 
@@ -32,52 +32,77 @@ fully documented using Swagger and supports role-based access control.
 
 ```mermaid
 flowchart TB
-    User[User]
-    subgraph Domain
-      Business --> Service --> Category
-      Provider --> ProviderService
-      Provider --> TimeSlot
-      Provider --> Review
-      Appointment --> OrderStatus[Status]
-      Appointment --> ReviewA[Review]
+    subgraph Client
+      Web[Next.js Frontend]
     end
-    User --> Appointment
-    User --> Provider
-    User --> Business
 
-    style Domain fill:#f9f,stroke:#333,stroke-width:1px
+    subgraph API["ASP.NET Core API"]
+      Controllers --> Validators
+      Controllers --> Repositories
+      Repositories --> UnitOfWork
+      UnitOfWork --> DbContext
+      Controllers --> CacheService
+    end
+
+    subgraph Infrastructure
+      DbContext --> PostgreSQL
+      CacheService --> Redis
+    end
+
+    Web -->|JWT| Controllers
 ```
 
 ---
 
-## 🛠 Setup & Installation
+## 🐳 Docker ile Hızlı Başlangıç
 
-1. Clone the repository and navigate to the `api` folder:
+En kolay kurulum yolu Docker Compose ile:
+
+```bash
+# 1. Ortam değişkenlerini ayarla
+cp .env.example .env
+# .env dosyasını açıp DB_PASSWORD ve JWT_SECRET değerlerini doldur
+
+# 2. Tüm servisleri ayağa kaldır (PostgreSQL + Redis + API)
+docker compose up --build
+```
+
+API `http://localhost:5000/swagger` adresinde çalışır.
+
+---
+
+## 🛠 Manuel Kurulum
+
+1. Repoyu klonla:
    ```bash
    git clone <repo-url>
    cd api
    ```
-2. Restore packages and apply migrations:
+2. Paketleri yükle ve migration'ları uygula:
    ```bash
    dotnet restore
-   dotnet ef migrations add InitialCreate
    dotnet ef database update
    ```
-3. **Configuration**
-   - Update connection strings and JWT key in `appsettings.json` or
-     use environment variables (`ConnectionStrings__Default` and
-     `Jwt__Key`).
-   - The application reads `ASPNETCORE_ENVIRONMENT` to load
-     `appsettings.Development.json` or other profiles.
-4. Run the application:
+3. **Konfigürasyon**
+   - `appsettings.Development.json` dosyasını oluştur ve bağlantı bilgilerini gir:
+   ```json
+   {
+     "ConnectionStrings": {
+       "DefaultConnection": "Host=localhost;Port=5432;Database=reservation;Username=postgres;Password=YOUR_PASSWORD"
+     },
+     "Jwt": {
+       "Secret": "YOUR_JWT_SECRET"
+     },
+     "Redis": {
+       "ConnectionString": "localhost:6379"
+     }
+   }
+   ```
+4. Uygulamayı başlat:
    ```bash
    dotnet run
    ```
-5. Open Swagger UI at `http://localhost:5000` for interactive API
-   exploration.
-
-> Tip: Environment variables are prefixed with `DOTNET_` on Windows
-> PowerShell: `setx ConnectionStrings__Default "..."`.
+5. Swagger UI: `http://localhost:5000/swagger`
 
 ---
 
@@ -96,14 +121,14 @@ flowchart TB
 
 Below is a high-level summary; use Swagger for full details.
 
-### **Authentication**
+### Authentication
 
 | Method | Endpoint             | Description                |
 | ------ | -------------------- | -------------------------- |
 | POST   | `/api/auth/register` | Register new user          |
 | POST   | `/api/auth/login`    | Authenticate and issue JWT |
 
-### **Categories**
+### Categories
 
 | Method | Endpoint               | Description             |
 | ------ | ---------------------- | ----------------------- |
@@ -111,7 +136,7 @@ Below is a high-level summary; use Swagger for full details.
 | GET    | `/api/categories/{id}` | Get category by id      |
 | POST   | `/api/categories`      | Create category (Admin) |
 
-### **Businesses**
+### Businesses
 
 | Method | Endpoint               | Description                |
 | ------ | ---------------------- | -------------------------- |
@@ -121,34 +146,20 @@ Below is a high-level summary; use Swagger for full details.
 | PUT    | `/api/businesses/{id}` | Update business            |
 | DELETE | `/api/businesses/{id}` | Soft delete                |
 
-_(Full endpoint list continues in the Swagger UI.)_
+_(Full endpoint list available in Swagger UI.)_
 
 ---
 
 ## ⚙️ Core Infrastructure
 
-The backend is built using a clean architecture approach with layered
-responsibilities. Key infrastructure components include:
+- **Repository & Unit‑of‑Work Pattern**: `IRepository`, `UnitOfWork` ve concrete implementasyonlar database erişimini soyutlar, test edilebilirliği artırır.
+- **Global Exception Middleware**: `GlobalExceptionMiddleware.cs` tüm unhandled exception'ları yakalar ve tutarlı `ApiResponse` nesneleri döner.
+- **FluentValidation**: `Validators/` klasöründeki validator'lar (ör. `AuthValidator`, `ServiceValidator`) ile DTO'lar validate edilir.
+- **Redis Cache**: `ICacheService` / `RedisCacheService` ile önbellekleme; `CacheKeys` helper'ı ile merkezi key yönetimi.
+- **Serilog**: Console ve dosya bazlı yapılandırılmış loglama, günlük rotasyon desteğiyle.
+- **Data Seeding**: `DataSeeder.cs` uygulama başlarken örnek kullanıcı, provider, business, servis ve kategori verilerini yükler.
 
-- **Repository & Unit‑of‑Work Pattern**: `IRepository`, `UnitOfWork` and
-  concrete implementations in `Repositories/` abstract database access
-  allowing easier testing and separation of concerns.
-- **Global Exception Middleware**: a custom middleware (`Middleware/GlobalExceptionMiddleware.cs`)
-  captures unhandled exceptions and returns consistent `ApiResponse`
-  objects with appropriate HTTP status codes.
-- **FluentValidation**: request DTOs are validated using validators in
-  `Validators/` (e.g. `AuthValidator`, `ServiceValidator`), ensuring
-  clean input and localized error messages.
-- **Caching**: a Redis‑backed cache service (`ICacheService` /
-  `RedisCacheService`) is registered along with `StackExchange.Redis`. A set
-  of `CacheKeys` helpers centralize cache key naming.
-- **Data Seeding**: `Data/DataSeeder.cs` populates the database with
-  sample users, providers, businesses, services, time slots, and categories
-  when the application starts.
-
-The DI container is configured in `Program.cs`, registering DbContext,
-services, controllers, authentication, swagger, and the aforementioned
-components.
+---
 
 ## 🔄 Example API Workflow
 
@@ -165,8 +176,9 @@ components.
 
 ## 🌐 Web Frontend
 
-A companion Next.js application lives in the `web` directory. It's a full-stack
-React app that consumes the API and provides the following features:
+A companion Next.js application lives in the `web` directory.
+
+**Features:**
 
 - User registration & login (JWT stored in HttpOnly cookies)
 - Role-based dashboards (receiver, provider, admin)
@@ -176,37 +188,27 @@ React app that consumes the API and provides the following features:
 - Provider profile editing, service & slot management
 - Review writing and moderation
 
-### Frontend Tech Stack
+**Frontend Tech Stack:**
 
-- **Next.js 14** (app router)
-- **TypeScript**
-- **Tailwind CSS** for styling
-- **React Query** / SWR for data fetching
-
-### Setup
+- Next.js 14 (App Router)
+- TypeScript
+- Tailwind CSS
+- React Query / SWR
 
 ```bash
 cd web
-npm install          # or yarn / pnpm
+npm install
 npm run dev
+# http://localhost:3000
 ```
 
-App will run at [http://localhost:3000](http://localhost:3000) and expects
-backend at `http://localhost:5000` (configurable via environment variables
-in `.env.local`).
-
-For production builds:
-
-```bash
-npm run build
-npm run start
-```
+Backend URL `.env.local` ile yapılandırılır (varsayılan: `http://localhost:5000`).
 
 ---
 
 ## 🎯 Seed Data
 
-When the application starts, the following categories are seeded:
+Uygulama başlarken aşağıdaki kategoriler otomatik yüklenir:
 
 - **Health** (Clinic, Dental, Psychology, Physiotherapy)
 - **Beauty** (Hairdresser, Makeup, Nail Art)
@@ -217,49 +219,29 @@ When the application starts, the following categories are seeded:
 
 ---
 
----
-
 ## 🧩 Testing
-
-Unit and integration tests reside in `api.Tests`.
-Run them with:
 
 ```bash
 cd api.Tests
 dotnet test
 ```
 
-Coverage reports can be generated with coverlet or similar tools.
+- **Unit testler**: Controller ve servis katmanları Moq ile izole test edilir.
+- **Integration testler**: `TestFactory` ile gerçek HTTP istekleri test edilir.
+- Coverage raporu için `coverlet` kullanılabilir.
 
 ### CI Integration
 
-A GitHub Actions workflow (`.github/workflows/ci.yml`) builds the
-solution, runs the test suite, and starts a short‑lived Redis container
-for integration tests. Successful runs provide badges and help maintain
-quality via automated checks.
+`.github/workflows/ci.yml` ile her push'ta build, test ve kısa ömürlü Redis container ile integration testler otomatik çalışır.
 
 ---
 
 ## 🚀 Deployment
 
-Use Docker for containerization or deploy directly to a cloud provider
-(e.g. Azure App Service, AWS Elastic Beanstalk) with a PostgreSQL
-database.
+Docker Compose ile tüm servisler (PostgreSQL + Redis + API) tek komutla ayağa kalkar. Alternatif olarak Azure App Service, AWS Elastic Beanstalk gibi cloud platformlarına doğrudan deploy edilebilir.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License. See `LICENSE` for details.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please fork the repo, create a feature branch,
-and submit a pull request. Maintain coding standards, include tests, and
-update documentation as needed.
-
-_Thank you for reviewing this backend API. I built it to demonstrate clean
-architecture, adherence to SOLID principles, and real-world API design—a
-strong showcase for technical interviews._
+MIT License.
