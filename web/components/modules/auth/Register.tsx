@@ -39,7 +39,7 @@ export default function RegisterForm() {
         fullName,
         email,
         password,
-        phone,
+        phone: phone.replace(/\s/g, ""),
         role,
       });
 

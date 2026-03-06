@@ -17,13 +17,20 @@ public class AppointmentController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly INotificationService _notify;
-    private readonly IEmailService _email; // ← eklendi
+    private readonly IEmailService _email;
+    private readonly ISmsService _sms;
 
-    public AppointmentController(AppDbContext db, INotificationService notify, IEmailService email) // ← eklendi
+    public AppointmentController(
+        AppDbContext db,
+        INotificationService notify,
+        IEmailService email,
+        ISmsService sms
+    )
     {
         _db = db;
         _notify = notify;
         _email = email;
+        _sms = sms;
     }
 
     // ── GET: Müşterinin kendi randevuları ─────────────────────
@@ -161,7 +168,7 @@ public class AppointmentController : ControllerBase
         slot.AppointmentId = appointment.Id;
         await _db.SaveChangesAsync();
 
-        // ── Eager load ilişkiler ───────────────────────────────
+        // ── Eager load ────────────────────────────────────────
         var provider = await _db
             .Providers.Include(p => p.User)
             .FirstAsync(p => p.Id == dto.ProviderId);
@@ -174,7 +181,7 @@ public class AppointmentController : ControllerBase
         await _db.Entry(appointment.Service).Reference(s => s.Category).LoadAsync();
         await _db.Entry(appointment.Service).Reference(s => s.Business).LoadAsync();
 
-        // ── SignalR bildirimleri ───────────────────────────────
+        // ── SignalR ───────────────────────────────────────────
         await _notify.SendAsync(
             receiverId,
             "Randevu Alındı",
@@ -190,10 +197,18 @@ public class AppointmentController : ControllerBase
             appointment.Id
         );
 
-        // ── Email bildirimleri (hem müşteriye hem provider'a) ──
+        // ── Email ─────────────────────────────────────────────
         var emailDto = BuildEmailDto(appointment, receiver!, provider);
         await _email.SendAppointmentCreatedAsync(emailDto);
-        // ──────────────────────────────────────────────────────
+
+        // ── SMS ───────────────────────────────────────────────
+        if (!string.IsNullOrEmpty(receiver!.Phone))
+            await _sms.SendAppointmentCreatedAsync(
+                receiver.Phone,
+                receiver.FullName,
+                service.Business.Name,
+                appointment.StartTime
+            );
 
         return CreatedAtAction(
             nameof(GetMine),
@@ -268,7 +283,7 @@ public class AppointmentController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        // ── SignalR push ───────────────────────────────────────
+        // ── SignalR ───────────────────────────────────────────
         await _notify.SendAppointmentStatusChangedAsync(
             appt.ReceiverId,
             appt.Id,
@@ -277,11 +292,30 @@ public class AppointmentController : ControllerBase
             appt.StartTime
         );
 
-        // ── Email ──────────────────────────────────────────────
+        // ── Email ─────────────────────────────────────────────
         var receiver = await _db.Users.FindAsync(appt.ReceiverId);
         var emailDto = BuildEmailDto(appt, receiver!, appt.Provider);
         await _email.SendAppointmentStatusChangedAsync(emailDto, newStatus.ToString(), dto.Reason);
-        // ──────────────────────────────────────────────────────
+
+        // ── SMS ───────────────────────────────────────────────
+        if (!string.IsNullOrEmpty(receiver?.Phone))
+        {
+            if (newStatus == AppointmentStatus.Rejected)
+                await _sms.SendAppointmentCancelledAsync(
+                    receiver.Phone,
+                    receiver.FullName,
+                    appt.Service.Business.Name,
+                    appt.StartTime
+                );
+            else
+                await _sms.SendAppointmentStatusChangedAsync(
+                    receiver.Phone,
+                    receiver.FullName,
+                    appt.Service.Business.Name,
+                    appt.StartTime,
+                    newStatus.ToString()
+                );
+        }
 
         return Ok(ApiResponse<AppointmentResponseDto>.Ok(ToDto(appt)));
     }
@@ -308,7 +342,7 @@ public class AppointmentController : ControllerBase
             appt.TimeSlot.Status = SlotStatus.Available;
         await _db.SaveChangesAsync();
 
-        // ── SignalR: provider'a bildir ─────────────────────────
+        // ── SignalR ───────────────────────────────────────────
         await _notify.SendAsync(
             appt.Provider.UserId,
             "Randevu İptal Edildi",
@@ -317,18 +351,25 @@ public class AppointmentController : ControllerBase
             appt.Id
         );
 
-        // ── Email: provider'a iptal maili ──────────────────────
+        // ── Email ─────────────────────────────────────────────
         var receiver = await _db.Users.FindAsync(appt.ReceiverId);
         var emailDto = BuildEmailDto(appt, receiver!, appt.Provider);
         await _email.SendAppointmentStatusChangedAsync(emailDto, "CancelledByReceiver", dto.Reason);
-        // ──────────────────────────────────────────────────────
+
+        // ── SMS ───────────────────────────────────────────────
+        if (!string.IsNullOrEmpty(receiver?.Phone))
+            await _sms.SendAppointmentCancelledAsync(
+                receiver.Phone,
+                receiver.FullName,
+                appt.Service.Business.Name,
+                appt.StartTime
+            );
 
         return Ok(ApiResponse<object?>.Ok(null, "Randevu iptal edildi."));
     }
 
     // ─── Helpers ──────────────────────────────────────────────
 
-    /// <summary>Email DTO'sunu appointment'tan oluşturur.</summary>
     private static AppointmentEmailDto BuildEmailDto(
         Appointment appt,
         User receiver,

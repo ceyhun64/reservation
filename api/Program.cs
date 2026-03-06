@@ -133,7 +133,12 @@ builder.Services.AddRateLimiter(opt =>
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
+// Services bölümüne ekle
+builder.Services.AddScoped<ISmsService, SmsService>();
+builder.Services.AddHostedService<ReminderBackgroundService>();
+
 builder.Services.AddScoped<IEmailService, EmailService>();
+
 // ── CORS ──────────────────────────────────────────────────────────────────────
 // AllowCredentials() — SignalR WebSocket için zorunlu!
 builder.Services.AddCors(opt =>

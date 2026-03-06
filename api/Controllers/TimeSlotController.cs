@@ -33,7 +33,12 @@ public class TimeSlotController : ControllerBase
             .AsQueryable();
 
         if (date.HasValue)
-            query = query.Where(ts => ts.StartTime.Date == date.Value.Date);
+        {
+            // date'i UTC olarak zorla
+            var utcDate = DateTime.SpecifyKind(date.Value.Date, DateTimeKind.Utc);
+            var nextDay = utcDate.AddDays(1);
+            query = query.Where(ts => ts.StartTime >= utcDate && ts.StartTime < nextDay);
+        }
 
         var slots = await query
             .OrderBy(ts => ts.StartTime)

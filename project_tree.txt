@@ -13,6 +13,7 @@
 │   │   ├── AppointmentControllerUnitTest.cs
 │   │   ├── AuthControllerUnitTest.cs
 │   │   ├── BusinessControllerUnitTest.cs
+│   │   ├── EmailServiceUnitTest.cs
 │   │   ├── NotificationServiceUnitTest.cs
 │   │   └── ServiceControllerUnitTest.cs
 │   └── api.Tests.csproj
@@ -72,6 +73,7 @@
 │   │   └── UnitOfWork.cs
 │   ├── Services
 │   │   ├── CacheKeys.cs
+│   │   ├── EmailService.cs
 │   │   ├── ICacheService.cs
 │   │   ├── NotificationService.cs
 │   │   └── RedisCacheServices.cs
