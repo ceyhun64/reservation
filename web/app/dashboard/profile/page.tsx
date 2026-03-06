@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import UserProfile from "@/components/modules/dashboard/Profile"; // İsmi UserProfile olarak güncellediğini varsayıyorum
+import TwoFactorSetUp from "@/components/modules/auth/TwoFactorSetup"; // 2FA bileşenini ekleyelim
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -19,5 +20,10 @@ export default async function ProfilePage() {
   }
 
   // Artık her iki rol de bu bileşeni görebilir
-  return <UserProfile />;
+  return (
+    <div>
+      <UserProfile />
+      <TwoFactorSetUp />
+    </div>
+  );
 }

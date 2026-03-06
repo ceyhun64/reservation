@@ -19,13 +19,12 @@ export interface PagedResponse<T> {
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
-// Backend: record RegisterDto(FullName, Email, Password, Phone, Role)
 export interface RegisterDto {
   fullName: string;
   email: string;
   password: string;
   phone: string;
-  role: "Receiver" | "Provider"; // Admin kayıt üzerinden oluşturulmaz
+  role: "Receiver" | "Provider";
 }
 
 export interface LoginDto {
@@ -33,12 +32,44 @@ export interface LoginDto {
   password: string;
 }
 
-// Backend: record AuthResponseDto(Token, Role, FullName, UserId)
+/**
+ * Returned by /login and /2fa/verify.
+ * When requiresTwoFactor is true, only tempToken is set.
+ * When login succeeds, token/role/fullName/userId are set.
+ */
 export interface AuthResponseDto {
-  token: string;
-  role: string;
-  fullName: string;
-  userId: number;
+  token?: string;
+  role?: string;
+  fullName?: string;
+  userId?: number;
+  requiresTwoFactor?: boolean;
+  tempToken?: string;
+}
+
+// ─── 2FA ─────────────────────────────────────────────────────────────────────
+
+export interface TwoFactorSetupResponseDto {
+  secret: string;
+  qrCodeUri: string;
+}
+
+export interface TwoFactorVerifyDto {
+  tempToken: string;
+  code: string;
+  rememberDevice: boolean;
+}
+
+export interface TrustedDeviceDto {
+  id: number;
+  userAgent: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface TwoFactorStatusDto {
+  enabled: boolean;
+  trustedDevices: TrustedDeviceDto[];
 }
 
 // ─── Category ────────────────────────────────────────────────────────────────

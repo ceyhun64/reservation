@@ -134,10 +134,11 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 // Services bölümüne ekle
-builder.Services.AddScoped<ISmsService, SmsService>();
 builder.Services.AddHostedService<ReminderBackgroundService>();
 
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<ISmsService, SmsService>();
+builder.Services.AddScoped<ITwoFactorService, TwoFactorService>(); // ← bunu ekle
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 // AllowCredentials() — SignalR WebSocket için zorunlu!

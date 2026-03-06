@@ -84,6 +84,91 @@ API `http://localhost:5000/swagger` adresinde çalışır.
 
 ---
 
+## 🔴 Redis Kurulumu
+
+Redis, 2FA geçici token'ları ve oturum verisi için **zorunlu** bir bağımlılıktır. Redis çalışmadan 2FA, güvenilir cihaz yönetimi ve oturum önbellekleme özelliği çalışmaz.
+
+### Docker ile (Önerilen)
+
+```bash
+# İlk kurulum
+docker run -d --name redis -p 6379:6379 redis:7-alpine
+
+# Sonraki başlatmalarda
+docker start redis
+
+# Çalışıp çalışmadığını doğrula
+docker exec redis redis-cli ping
+# Cevap: PONG
+```
+
+### docker-compose.yml ile (Production-Like)
+
+```yaml
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+```
+
+```bash
+docker-compose up -d
+```
+
+### Windows — Docker olmadan
+
+```powershell
+# winget ile
+winget install Redis.Redis
+
+# Veya Chocolatey ile
+choco install redis-64
+```
+
+Kurulumdan sonra:
+
+```powershell
+redis-server
+# Yeni terminalde:
+redis-cli ping   # PONG gelmeli
+```
+
+### WSL2 üzerinden
+
+```bash
+sudo apt update && sudo apt install redis-server -y
+sudo service redis-server start
+redis-cli ping   # PONG
+```
+
+### Konfigürasyon
+
+`appsettings.Development.json` içinde Redis bağlantı dizesi:
+
+```json
+"Redis": {
+  "ConnectionString": "localhost:6379,abortConnect=false,connectTimeout=5000,syncTimeout=5000"
+}
+```
+
+> **Not:** `abortConnect=false` sayesinde Redis geçici olarak erişilemez olsa bile uygulama başlamaya devam eder. Ancak Redis gerektiren özellikler (2FA vb.) bu sürede çalışmaz.
+
+### Redis Kullanan Özellikler
+
+| Özellik                | Cache Key             | TTL       |
+| ---------------------- | --------------------- | --------- |
+| 2FA kurulum secret'ı   | `2fa_setup:{userId}`  | 10 dakika |
+| 2FA login geçici token | `2fa_pending:{token}` | 5 dakika  |
+
+---
+
 ## 🛠 Manuel Kurulum
 
 1. Repoyu klonla:
@@ -190,10 +275,10 @@ _(Full endpoint list available in Swagger UI.)_
 
 Kötüye kullanımı önlemek ve API kararlılığını korumak için .NET 8 built-in rate limiter kullanılmaktadır. Limit aşıldığında `429 Too Many Requests` döner.
 
-| Policy  | Uygulandığı yer         | Limit             | Amaç                            |
-| ------- | ----------------------- | ----------------- | ------------------------------- |
-| `fixed` | Tüm controller'lar      | 60 istek / dakika | Genel API koruması              |
-| `auth`  | `/api/auth/*`           | 10 istek / dakika | Brute-force login koruması      |
+| Policy  | Uygulandığı yer    | Limit             | Amaç                       |
+| ------- | ------------------ | ----------------- | -------------------------- |
+| `fixed` | Tüm controller'lar | 60 istek / dakika | Genel API koruması         |
+| `auth`  | `/api/auth/*`      | 10 istek / dakika | Brute-force login koruması |
 
 ```csharp
 // Auth endpoint'lerine özel policy uygulamak için:
@@ -220,12 +305,13 @@ GET /health
 | Redis      | Ping (`StackExchange`)  |
 
 **Örnek yanıt:**
+
 ```json
 {
   "status": "Healthy",
   "results": {
     "npgsql": { "status": "Healthy" },
-    "redis":  { "status": "Healthy" }
+    "redis": { "status": "Healthy" }
   }
 }
 ```
@@ -269,11 +355,11 @@ await connection.start();
 
 ### SignalR Ayarları
 
-| Ayar                    | Değer    | Açıklama                              |
-| ----------------------- | -------- | ------------------------------------- |
-| `KeepAliveInterval`     | 15 sn    | Bağlantı canlı tutma ping süresi      |
-| `ClientTimeoutInterval` | 30 sn    | Cevap gelmezse bağlantı kesilir       |
-| `EnableDetailedErrors`  | Dev only | Production'da kapalı                  |
+| Ayar                    | Değer    | Açıklama                         |
+| ----------------------- | -------- | -------------------------------- |
+| `KeepAliveInterval`     | 15 sn    | Bağlantı canlı tutma ping süresi |
+| `ClientTimeoutInterval` | 30 sn    | Cevap gelmezse bağlantı kesilir  |
+| `EnableDetailedErrors`  | Dev only | Production'da kapalı             |
 
 ### Tetiklenen Olaylar
 
@@ -285,6 +371,7 @@ await connection.start();
 | Randevu tamamlandı       | Receiver            | Değerlendirme yapması için yönlendirilir     |
 
 > **Not:** Birden fazla sunucu örneği (horizontal scaling) çalıştırılıyorsa SignalR backplane olarak Redis kullanılmalıdır:
+>
 > ```csharp
 > builder.Services.AddSignalR().AddStackExchangeRedis("localhost:6379");
 > ```
@@ -491,6 +578,7 @@ dotnet test
 Docker Compose ile tüm servisler (PostgreSQL + Redis + API) tek komutla ayağa kalkar. Alternatif olarak Azure App Service, AWS Elastic Beanstalk gibi cloud platformlarına doğrudan deploy edilebilir.
 
 **Production checklist:**
+
 - `appsettings.json` içindeki tüm secret'ları environment variable'a taşı
 - CORS origin listesini production domain'leriyle güncelle
 - `EnsureDeleted` kodunun `IsDevelopment()` guard'ı içinde kaldığını doğrula

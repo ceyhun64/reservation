@@ -17,10 +17,11 @@ public class AppDbContext : DbContext
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<TrustedDevice> TrustedDevices => Set<TrustedDevice>(); // ← 2FA
 
     protected override void OnModelCreating(ModelBuilder m)
     {
-        // ── User ────────────────────────────────────────────────
+        // ── User ──────────────────────────────────────────────────────────────
         m.Entity<User>().HasIndex(u => u.Email).IsUnique();
 
         // User → Provider (1-1)
@@ -30,14 +31,21 @@ public class AppDbContext : DbContext
             .HasForeignKey<Provider>(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // ── Provider → Businesses (1-many) ──────────────────────
+        // User → TrustedDevices (1-many) — kullanıcı silinince cihazlar da silinir
+        m.Entity<User>()
+            .HasMany(u => u.TrustedDevices)
+            .WithOne(td => td.User)
+            .HasForeignKey(td => td.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ── Provider → Businesses (1-many) ────────────────────────────────────
         m.Entity<Provider>()
             .HasMany(p => p.Businesses)
             .WithOne(b => b.Provider)
             .HasForeignKey(b => b.ProviderId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // ── Category (self-referencing) ──────────────────────────
+        // ── Category (self-referencing) ───────────────────────────────────────
         m.Entity<Category>()
             .HasOne(c => c.ParentCategory)
             .WithMany(c => c.SubCategories)
@@ -46,7 +54,7 @@ public class AppDbContext : DbContext
 
         m.Entity<Category>().HasIndex(c => c.Slug).IsUnique();
 
-        // ── Service ──────────────────────────────────────────────
+        // ── Service ───────────────────────────────────────────────────────────
         m.Entity<Service>().Property(s => s.Price).HasColumnType("decimal(18,2)");
 
         m.Entity<Service>()
@@ -61,38 +69,34 @@ public class AppDbContext : DbContext
             .HasForeignKey(s => s.BusinessId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // ── Appointment ──────────────────────────────────────────
+        // ── Appointment ───────────────────────────────────────────────────────
         m.Entity<Appointment>().Property(a => a.PricePaid).HasColumnType("decimal(18,2)");
 
-        // Receiver → Appointments
         m.Entity<Appointment>()
             .HasOne(a => a.Receiver)
             .WithMany(u => u.ReceivedAppointments)
             .HasForeignKey(a => a.ReceiverId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Provider → Appointments
         m.Entity<Appointment>()
             .HasOne(a => a.Provider)
             .WithMany(p => p.GivenAppointments)
             .HasForeignKey(a => a.ProviderId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Service → Appointments
         m.Entity<Appointment>()
             .HasOne(a => a.Service)
             .WithMany(s => s.Appointments)
             .HasForeignKey(a => a.ServiceId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Appointment → TimeSlot (1-1)
         m.Entity<Appointment>()
             .HasOne(a => a.TimeSlot)
             .WithOne(ts => ts.Appointment)
             .HasForeignKey<Appointment>(a => a.TimeSlotId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        // ── Review ───────────────────────────────────────────────
+        // ── Review ────────────────────────────────────────────────────────────
         m.Entity<Review>()
             .HasOne(r => r.Appointment)
             .WithOne(a => a.Review)
@@ -111,24 +115,27 @@ public class AppDbContext : DbContext
             .HasForeignKey(r => r.ProviderId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Bir randevuya sadece bir yorum
         m.Entity<Review>().HasIndex(r => r.AppointmentId).IsUnique();
 
-        // ── Notification ─────────────────────────────────────────
+        // ── Notification ──────────────────────────────────────────────────────
         m.Entity<Notification>()
             .HasOne(n => n.User)
             .WithMany(u => u.Notifications)
             .HasForeignKey(n => n.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // ── TimeSlot → Provider ──────────────────────────────────
+        // ── TimeSlot → Provider ───────────────────────────────────────────────
         m.Entity<TimeSlot>()
             .HasOne(ts => ts.Provider)
             .WithMany(p => p.TimeSlots)
             .HasForeignKey(ts => ts.ProviderId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // ── Seed: Kök Kategoriler ─────────────────────────────────
+        // ── TrustedDevice ─────────────────────────────────────────────────────
+        // TokenHash unique index — aynı token hash'i iki kez kaydedilemez
+        m.Entity<TrustedDevice>().HasIndex(td => td.TokenHash).IsUnique();
+
+        // ── Seed: Kategoriler ─────────────────────────────────────────────────
         m.Entity<Category>()
             .HasData(
                 new Category
@@ -191,7 +198,6 @@ public class AppDbContext : DbContext
                     IsActive = true,
                     CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 },
-                // Alt kategoriler
                 new Category
                 {
                     Id = 10,

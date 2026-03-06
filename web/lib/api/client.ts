@@ -5,16 +5,27 @@ type RequestOptions = {
   method?: string;
   body?: unknown;
   token?: string;
+  /** Ek HTTP başlıkları — token ile birlikte merge edilir */
+  headers?: Record<string, string>;
+  /** Cookie davranışı. Trusted-device cookie için "include" gerekli. */
+  credentials?: RequestCredentials;
 };
 
 export async function apiRequest<T>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { method = "GET", body, token } = options;
+  const {
+    method = "GET",
+    body,
+    token,
+    headers: extraHeaders,
+    credentials,
+  } = options;
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...extraHeaders,
   };
 
   if (token) {
@@ -24,7 +35,8 @@ export async function apiRequest<T>(
   const res = await fetch(`${API_BASE_URL}${endpoint}`, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    credentials: credentials ?? "same-origin",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
   const text = await res.text();
@@ -36,5 +48,5 @@ export async function apiRequest<T>(
     throw new Error(message);
   }
 
-  return data;
+  return data as T;
 }
