@@ -25,6 +25,9 @@ fully documented using Swagger and supports role-based access control.
 - Serilog
 - xUnit & Moq for unit and integration tests
 - Docker / Docker Compose
+- Twilio (SMS notifications)
+- SendGrid (Email notifications)
+- SignalR (Real-time notifications)
 
 ---
 
@@ -42,14 +45,21 @@ flowchart TB
       Repositories --> UnitOfWork
       UnitOfWork --> DbContext
       Controllers --> CacheService
+      Controllers --> NotificationService
+      Controllers --> EmailService
+      Controllers --> SmsService
     end
 
     subgraph Infrastructure
       DbContext --> PostgreSQL
       CacheService --> Redis
+      NotificationService --> SignalR
+      EmailService --> SendGrid
+      SmsService --> Twilio
     end
 
     Web -->|JWT| Controllers
+    Web <-->|WebSocket| SignalR
 ```
 
 ---
@@ -95,6 +105,16 @@ API `http://localhost:5000/swagger` adresinde çalışır.
      },
      "Redis": {
        "ConnectionString": "localhost:6379"
+     },
+     "Twilio": {
+       "AccountSid": "YOUR_TWILIO_ACCOUNT_SID",
+       "AuthToken": "YOUR_TWILIO_AUTH_TOKEN",
+       "FromNumber": "+1XXXXXXXXXX"
+     },
+     "SendGrid": {
+       "ApiKey": "YOUR_SENDGRID_API_KEY",
+       "FromEmail": "noreply@yourdomain.com",
+       "FromName": "Reservation"
      }
    }
    ```
@@ -161,6 +181,181 @@ _(Full endpoint list available in Swagger UI.)_
 
 ---
 
+## 📡 Real-Time Notifications — SignalR
+
+Kullanıcılara anlık bildirim göndermek için ASP.NET Core SignalR kullanılmaktadır.
+
+### Nasıl Çalışır?
+
+Kullanıcı giriş yaptıktan sonra frontend, JWT token ile SignalR hub'a WebSocket bağlantısı açar. Sunucu tarafında bir işlem gerçekleştiğinde (randevu oluşturma, onaylama, iptal vb.) `INotificationService` üzerinden ilgili kullanıcıya anlık bildirim iletilir.
+
+```
+Frontend  ──WebSocket──►  /hubs/notification  ──►  NotificationService  ──►  Kullanıcı
+```
+
+### Hub Endpoint
+
+```
+ws://localhost:5000/hubs/notification
+```
+
+Bağlantı kurarken JWT token query string veya header ile iletilmelidir:
+
+```javascript
+const connection = new HubConnectionBuilder()
+  .withUrl("http://localhost:5000/hubs/notification", {
+    accessTokenFactory: () => session.accessToken,
+  })
+  .withAutomaticReconnect()
+  .build();
+
+connection.on("ReceiveNotification", (notification) => {
+  console.log(notification);
+});
+
+await connection.start();
+```
+
+### Tetiklenen Olaylar
+
+| Olay                        | Alıcı            | Açıklama                                 |
+| --------------------------- | ---------------- | ---------------------------------------- |
+| Randevu oluşturuldu         | Receiver + Provider | Her iki tarafa ayrı bildirim gönderilir |
+| Durum değişti (onay/red)    | Receiver         | Provider aksiyonu sonrası tetiklenir     |
+| Müşteri iptal etti          | Provider         | Receiver iptal ettiğinde provider bildirilir |
+| Randevu tamamlandı          | Receiver         | Değerlendirme yapması için yönlendirilir |
+
+### Konfigürasyon (`Program.cs`)
+
+```csharp
+builder.Services.AddSignalR();
+app.MapHub<NotificationHub>("/hubs/notification");
+```
+
+> **Not:** Birden fazla sunucu örneği (horizontal scaling) çalıştırılıyorsa SignalR backplane olarak Redis kullanılmalıdır:
+> ```csharp
+> builder.Services.AddSignalR().AddStackExchangeRedis("localhost:6379");
+> ```
+
+---
+
+## 📧 Email Notifications — SendGrid
+
+Randevu işlemlerinde kullanıcılara otomatik e-posta gönderimi için **SendGrid** entegrasyonu kullanılmaktadır.
+
+### Kurulum
+
+```bash
+dotnet add package SendGrid
+```
+
+### Konfigürasyon (`appsettings.json`)
+
+```json
+"SendGrid": {
+  "ApiKey": "YOUR_SENDGRID_API_KEY",
+  "FromEmail": "noreply@yourdomain.com",
+  "FromName": "Reservation"
+}
+```
+
+### Gönderilen E-postalar
+
+| Durum                   | Alıcı              | İçerik                                        |
+| ----------------------- | ------------------ | --------------------------------------------- |
+| Randevu oluşturuldu     | Receiver + Provider | Randevu detayları ve bekleme durumu           |
+| Durum değişti           | Receiver           | Onay / red / tamamlandı bilgisi               |
+| Müşteri iptal etti      | Provider           | Müşteri adı ve iptal nedeni                   |
+
+### Servis Arayüzü
+
+```csharp
+public interface IEmailService
+{
+    Task SendAppointmentCreatedAsync(AppointmentEmailDto dto);
+    Task SendAppointmentStatusChangedAsync(AppointmentEmailDto dto, string status, string? reason);
+}
+```
+
+### SendGrid Dashboard
+
+1. [sendgrid.com](https://sendgrid.com) → **Settings → API Keys → Create API Key**
+2. İzin: **Mail Send (Full Access)**
+3. **Sender Authentication**: Gönderici domain veya tek adres doğrulaması yapılmalıdır, aksi halde e-postalar spam klasörüne düşer.
+
+> **Not:** SendGrid'in ücretsiz planı günlük **100 e-posta** limitine sahiptir. Production ortamı için ücretli plana geçilmesi önerilir.
+
+---
+
+## 📱 SMS Notifications — Twilio
+
+Randevu işlemlerinde kullanıcılara SMS gönderimi için **Twilio** entegrasyonu kullanılmaktadır.
+
+### Kurulum
+
+```bash
+dotnet add package Twilio
+```
+
+### Konfigürasyon (`appsettings.json`)
+
+```json
+"Twilio": {
+  "AccountSid": "YOUR_TWILIO_ACCOUNT_SID",
+  "AuthToken":  "YOUR_TWILIO_AUTH_TOKEN",
+  "FromNumber": "+1XXXXXXXXXX"
+}
+```
+
+### Gönderilen SMS'ler
+
+| Durum                   | Alıcı    | Örnek İçerik                                                     |
+| ----------------------- | -------- | ---------------------------------------------------------------- |
+| Randevu oluşturuldu     | Receiver | `Merhaba Ali, Prestige Barber Studio icin 07.03.2026 12:00 tarihli randevunuz olusturuldu.` |
+| Durum değişti           | Receiver | `...randevunuz onaylandi / reddedildi / tamamlandi.`             |
+| İptal edildi            | Receiver | `...randevunuz iptal edildi.`                                    |
+| Hatırlatma              | Receiver | `Hatirlatma: 07.03.2026 12:00 tarihinde ... randevunuz var.`     |
+
+### Türkçe Karakter Uyumluluğu
+
+GSM 7-bit SMS standardı Türkçe karakterleri (ş, ğ, ü, ö, ç, ı, İ…) desteklemez. Bu karakterler gönderimde bozulur (örn. `Ü` → `^`). `SmsService` içindeki `N()` yardımcı metodu tüm metni otomatik olarak ASCII'ye normalize eder:
+
+```csharp
+private static string N(string text) =>
+    text
+        .Replace('ç', 'c').Replace('Ç', 'C')
+        .Replace('ğ', 'g').Replace('Ğ', 'G')
+        .Replace('ı', 'i').Replace('İ', 'I')
+        .Replace('ö', 'o').Replace('Ö', 'O')
+        .Replace('ş', 's').Replace('Ş', 'S')
+        .Replace('ü', 'u').Replace('Ü', 'U');
+```
+
+### Servis Arayüzü
+
+```csharp
+public interface ISmsService
+{
+    Task SendAppointmentCreatedAsync(string toPhone, string customerName, string businessName, DateTime appointmentTime);
+    Task SendAppointmentStatusChangedAsync(string toPhone, string customerName, string businessName, DateTime appointmentTime, string status);
+    Task SendAppointmentCancelledAsync(string toPhone, string customerName, string businessName, DateTime appointmentTime);
+    Task SendAppointmentReminderAsync(string toPhone, string customerName, string businessName, DateTime appointmentTime);
+}
+```
+
+### Twilio Hesap Notları
+
+| Özellik                  | Trial Hesap          | Ücretli Hesap         |
+| ------------------------ | -------------------- | --------------------- |
+| Mesaj öneki              | `Sent from your Twilio trial account -` | Yok |
+| Alphanumeric Sender ID   | ❌ Desteklenmiyor    | ✅ Ülkeye göre kayıt gerekir |
+| Gönderim kısıtlaması     | Yalnızca doğrulanmış numaralar | Tüm numaralar |
+| Türkiye SMS fiyatı       | —                    | ~$0.05 / SMS          |
+
+> **Not:** SMS hatası uygulamayı durdurmaz; hatalar yalnızca loglanır. Telefon numarası olmayan kullanıcılara SMS gönderimi otomatik olarak atlanır.
+
+---
+
 ## 🔄 Example API Workflow
 
 1. Provider registers → `POST /api/auth/register` (role=Provider)
@@ -169,7 +364,13 @@ _(Full endpoint list available in Swagger UI.)_
 4. Provider sets availability → `POST /api/timeslots/provider/{id}/bulk`
 5. Receiver registers → `POST /api/auth/register` (role=Receiver)
 6. Receiver books appointment → `POST /api/appointments`
+   - ✉️ E-posta gönderilir (Receiver + Provider)
+   - 📱 SMS gönderilir (Receiver)
+   - 📡 SignalR bildirimi iletilir (Receiver + Provider)
 7. Provider confirms → `PATCH /api/appointments/{id}/status`
+   - ✉️ Durum e-postası gönderilir
+   - 📱 Durum SMS'i gönderilir
+   - 📡 Anlık bildirim iletilir
 8. After completion, receiver reviews provider
 
 ---
@@ -187,6 +388,7 @@ A companion Next.js application lives in the `web` directory.
 - Appointment booking and management
 - Provider profile editing, service & slot management
 - Review writing and moderation
+- Real-time notifications via SignalR (`use-signalr.ts`)
 
 **Frontend Tech Stack:**
 
@@ -194,6 +396,7 @@ A companion Next.js application lives in the `web` directory.
 - TypeScript
 - Tailwind CSS
 - React Query / SWR
+- `@microsoft/signalr`
 
 ```bash
 cd web
