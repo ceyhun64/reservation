@@ -18,16 +18,18 @@ fully documented using Swagger and supports role-based access control.
 
 - .NET 8 (ASP.NET Core Web API)
 - Entity Framework Core with Npgsql (PostgreSQL)
-- JWT Authentication
+- JWT Authentication (Issuer/Audience validation, ClockSkew: zero)
 - Redis (StackExchange.Redis)
 - Swagger / OpenAPI
 - FluentValidation
-- Serilog
+- Serilog (structured request logging)
 - xUnit & Moq for unit and integration tests
 - Docker / Docker Compose
 - Twilio (SMS notifications)
 - SendGrid (Email notifications)
 - SignalR (Real-time notifications)
+- Rate Limiting (built-in .NET 8)
+- Health Checks (PostgreSQL + Redis)
 
 ---
 
@@ -48,6 +50,7 @@ flowchart TB
       Controllers --> NotificationService
       Controllers --> EmailService
       Controllers --> SmsService
+      ReminderBg[ReminderBackgroundService] --> SmsService
     end
 
     subgraph Infrastructure
@@ -93,15 +96,16 @@ API `http://localhost:5000/swagger` adresinde çalışır.
    dotnet restore
    dotnet ef database update
    ```
-3. **Konfigürasyon**
-   - `appsettings.Development.json` dosyasını oluştur ve bağlantı bilgilerini gir:
+3. **Konfigürasyon** — `appsettings.Development.json` dosyasını oluştur:
    ```json
    {
      "ConnectionStrings": {
        "DefaultConnection": "Host=localhost;Port=5432;Database=reservation;Username=postgres;Password=YOUR_PASSWORD"
      },
      "Jwt": {
-       "Secret": "YOUR_JWT_SECRET"
+       "Secret": "YOUR_JWT_SECRET_MIN_32_CHARS",
+       "Issuer": "reservation-api",
+       "Audience": "reservation-client"
      },
      "Redis": {
        "ConnectionString": "localhost:6379"
@@ -176,8 +180,55 @@ _(Full endpoint list available in Swagger UI.)_
 - **Global Exception Middleware**: `GlobalExceptionMiddleware.cs` tüm unhandled exception'ları yakalar ve tutarlı `ApiResponse` nesneleri döner.
 - **FluentValidation**: `Validators/` klasöründeki validator'lar (ör. `AuthValidator`, `ServiceValidator`) ile DTO'lar validate edilir.
 - **Redis Cache**: `ICacheService` / `RedisCacheService` ile önbellekleme; `CacheKeys` helper'ı ile merkezi key yönetimi.
-- **Serilog**: Console ve dosya bazlı yapılandırılmış loglama, günlük rotasyon desteğiyle.
+- **Serilog**: Her HTTP isteği için `{Method} {Path} → {StatusCode} ({Elapsed}ms)` formatında yapılandırılmış request loglama. Console ve dosya sink'leri desteklenir.
 - **Data Seeding**: `DataSeeder.cs` uygulama başlarken örnek kullanıcı, provider, business, servis ve kategori verilerini yükler.
+- **JSON Serialization**: Dairesel referans döngüleri (`ReferenceHandler.IgnoreCycles`), null alanlar (`WhenWritingNull`) ve enum'lar string olarak serialize edilir (`JsonStringEnumConverter`).
+
+---
+
+## 🛡️ Rate Limiting
+
+Kötüye kullanımı önlemek ve API kararlılığını korumak için .NET 8 built-in rate limiter kullanılmaktadır. Limit aşıldığında `429 Too Many Requests` döner.
+
+| Policy  | Uygulandığı yer         | Limit             | Amaç                            |
+| ------- | ----------------------- | ----------------- | ------------------------------- |
+| `fixed` | Tüm controller'lar      | 60 istek / dakika | Genel API koruması              |
+| `auth`  | `/api/auth/*`           | 10 istek / dakika | Brute-force login koruması      |
+
+```csharp
+// Auth endpoint'lerine özel policy uygulamak için:
+[EnableRateLimiting("auth")]
+[HttpPost("login")]
+public async Task<IActionResult> Login(...) { }
+```
+
+---
+
+## 🏥 Health Checks
+
+Uygulamanın ve bağımlı servislerinin durumu `/health` endpoint'i üzerinden izlenebilir. Kubernetes liveness/readiness probe'ları ve load balancer'lar bu endpoint'i kullanır.
+
+```
+GET /health
+```
+
+**Kontrol edilen servisler:**
+
+| Servis     | Kontrol Yöntemi         |
+| ---------- | ----------------------- |
+| PostgreSQL | Test sorgusu (`NpgSql`) |
+| Redis      | Ping (`StackExchange`)  |
+
+**Örnek yanıt:**
+```json
+{
+  "status": "Healthy",
+  "results": {
+    "npgsql": { "status": "Healthy" },
+    "redis":  { "status": "Healthy" }
+  }
+}
+```
 
 ---
 
@@ -190,20 +241,20 @@ Kullanıcılara anlık bildirim göndermek için ASP.NET Core SignalR kullanılm
 Kullanıcı giriş yaptıktan sonra frontend, JWT token ile SignalR hub'a WebSocket bağlantısı açar. Sunucu tarafında bir işlem gerçekleştiğinde (randevu oluşturma, onaylama, iptal vb.) `INotificationService` üzerinden ilgili kullanıcıya anlık bildirim iletilir.
 
 ```
-Frontend  ──WebSocket──►  /hubs/notification  ──►  NotificationService  ──►  Kullanıcı
+Frontend  ──WebSocket──►  /hubs/notifications  ──►  NotificationService  ──►  Kullanıcı
 ```
 
 ### Hub Endpoint
 
 ```
-ws://localhost:5000/hubs/notification
+ws://localhost:5000/hubs/notifications
 ```
 
-Bağlantı kurarken JWT token query string veya header ile iletilmelidir:
+WebSocket başlık taşıyamadığı için JWT token query string üzerinden iletilir; bu davranış `JwtBearerEvents.OnMessageReceived` ile handle edilmiştir:
 
 ```javascript
 const connection = new HubConnectionBuilder()
-  .withUrl("http://localhost:5000/hubs/notification", {
+  .withUrl("http://localhost:5000/hubs/notifications", {
     accessTokenFactory: () => session.accessToken,
   })
   .withAutomaticReconnect()
@@ -216,26 +267,51 @@ connection.on("ReceiveNotification", (notification) => {
 await connection.start();
 ```
 
+### SignalR Ayarları
+
+| Ayar                    | Değer    | Açıklama                              |
+| ----------------------- | -------- | ------------------------------------- |
+| `KeepAliveInterval`     | 15 sn    | Bağlantı canlı tutma ping süresi      |
+| `ClientTimeoutInterval` | 30 sn    | Cevap gelmezse bağlantı kesilir       |
+| `EnableDetailedErrors`  | Dev only | Production'da kapalı                  |
+
 ### Tetiklenen Olaylar
 
-| Olay                        | Alıcı            | Açıklama                                 |
-| --------------------------- | ---------------- | ---------------------------------------- |
-| Randevu oluşturuldu         | Receiver + Provider | Her iki tarafa ayrı bildirim gönderilir |
-| Durum değişti (onay/red)    | Receiver         | Provider aksiyonu sonrası tetiklenir     |
-| Müşteri iptal etti          | Provider         | Receiver iptal ettiğinde provider bildirilir |
-| Randevu tamamlandı          | Receiver         | Değerlendirme yapması için yönlendirilir |
-
-### Konfigürasyon (`Program.cs`)
-
-```csharp
-builder.Services.AddSignalR();
-app.MapHub<NotificationHub>("/hubs/notification");
-```
+| Olay                     | Alıcı               | Açıklama                                     |
+| ------------------------ | ------------------- | -------------------------------------------- |
+| Randevu oluşturuldu      | Receiver + Provider | Her iki tarafa ayrı bildirim gönderilir      |
+| Durum değişti (onay/red) | Receiver            | Provider aksiyonu sonrası tetiklenir         |
+| Müşteri iptal etti       | Provider            | Receiver iptal ettiğinde provider bildirilir |
+| Randevu tamamlandı       | Receiver            | Değerlendirme yapması için yönlendirilir     |
 
 > **Not:** Birden fazla sunucu örneği (horizontal scaling) çalıştırılıyorsa SignalR backplane olarak Redis kullanılmalıdır:
 > ```csharp
 > builder.Services.AddSignalR().AddStackExchangeRedis("localhost:6379");
 > ```
+
+---
+
+## ⏰ Reminder Background Service
+
+`ReminderBackgroundService`, uygulama başladığında otomatik olarak çalışan bir `IHostedService` implementasyonudur. Yaklaşan randevular için kullanıcılara SMS hatırlatması gönderir.
+
+- Arka planda periyodik olarak çalışır; herhangi bir HTTP isteği gerektirmez.
+- `ISmsService.SendAppointmentReminderAsync(...)` metodunu kullanır.
+- Uygulama kapanırken `CancellationToken` ile düzgün şekilde sonlandırılır (graceful shutdown).
+
+---
+
+## 🌐 CORS
+
+SignalR WebSocket bağlantısı `credentials` gerektirdiğinden `AllowCredentials()` zorunludur. Wildcard origin (`*`) ile `AllowCredentials()` birlikte kullanılamaz; bu nedenle izin verilen origin'ler açıkça belirtilmiştir.
+
+```
+İzin verilen origin'ler:
+  http://localhost:3000   (Next.js dev)
+  http://localhost:5191   (alternatif dev port)
+```
+
+> Production'da bu değerler environment variable üzerinden yapılandırılmalıdır.
 
 ---
 
@@ -249,23 +325,13 @@ Randevu işlemlerinde kullanıcılara otomatik e-posta gönderimi için **SendGr
 dotnet add package SendGrid
 ```
 
-### Konfigürasyon (`appsettings.json`)
-
-```json
-"SendGrid": {
-  "ApiKey": "YOUR_SENDGRID_API_KEY",
-  "FromEmail": "noreply@yourdomain.com",
-  "FromName": "Reservation"
-}
-```
-
 ### Gönderilen E-postalar
 
-| Durum                   | Alıcı              | İçerik                                        |
-| ----------------------- | ------------------ | --------------------------------------------- |
-| Randevu oluşturuldu     | Receiver + Provider | Randevu detayları ve bekleme durumu           |
-| Durum değişti           | Receiver           | Onay / red / tamamlandı bilgisi               |
-| Müşteri iptal etti      | Provider           | Müşteri adı ve iptal nedeni                   |
+| Durum               | Alıcı               | İçerik                              |
+| ------------------- | ------------------- | ----------------------------------- |
+| Randevu oluşturuldu | Receiver + Provider | Randevu detayları ve bekleme durumu |
+| Durum değişti       | Receiver            | Onay / red / tamamlandı bilgisi     |
+| Müşteri iptal etti  | Provider            | Müşteri adı ve iptal nedeni         |
 
 ### Servis Arayüzü
 
@@ -297,28 +363,18 @@ Randevu işlemlerinde kullanıcılara SMS gönderimi için **Twilio** entegrasyo
 dotnet add package Twilio
 ```
 
-### Konfigürasyon (`appsettings.json`)
-
-```json
-"Twilio": {
-  "AccountSid": "YOUR_TWILIO_ACCOUNT_SID",
-  "AuthToken":  "YOUR_TWILIO_AUTH_TOKEN",
-  "FromNumber": "+1XXXXXXXXXX"
-}
-```
-
 ### Gönderilen SMS'ler
 
-| Durum                   | Alıcı    | Örnek İçerik                                                     |
-| ----------------------- | -------- | ---------------------------------------------------------------- |
-| Randevu oluşturuldu     | Receiver | `Merhaba Ali, Prestige Barber Studio icin 07.03.2026 12:00 tarihli randevunuz olusturuldu.` |
-| Durum değişti           | Receiver | `...randevunuz onaylandi / reddedildi / tamamlandi.`             |
-| İptal edildi            | Receiver | `...randevunuz iptal edildi.`                                    |
-| Hatırlatma              | Receiver | `Hatirlatma: 07.03.2026 12:00 tarihinde ... randevunuz var.`     |
+| Durum               | Alıcı    | Örnek İçerik                                                                                |
+| ------------------- | -------- | ------------------------------------------------------------------------------------------- |
+| Randevu oluşturuldu | Receiver | `Merhaba Ali, Prestige Barber Studio icin 07.03.2026 12:00 tarihli randevunuz olusturuldu.` |
+| Durum değişti       | Receiver | `...randevunuz onaylandi / reddedildi / tamamlandi.`                                        |
+| İptal edildi        | Receiver | `...randevunuz iptal edildi.`                                                               |
+| Hatırlatma          | Receiver | `Hatirlatma: 07.03.2026 12:00 tarihinde ... randevunuz var.`                                |
 
 ### Türkçe Karakter Uyumluluğu
 
-GSM 7-bit SMS standardı Türkçe karakterleri (ş, ğ, ü, ö, ç, ı, İ…) desteklemez. Bu karakterler gönderimde bozulur (örn. `Ü` → `^`). `SmsService` içindeki `N()` yardımcı metodu tüm metni otomatik olarak ASCII'ye normalize eder:
+GSM 7-bit SMS standardı Türkçe karakterleri desteklemez; gönderimde bozulurlar (örn. `Ü` → `^`). `SmsService` içindeki `N()` yardımcı metodu tüm metni otomatik ASCII'ye normalize eder:
 
 ```csharp
 private static string N(string text) =>
@@ -331,26 +387,14 @@ private static string N(string text) =>
         .Replace('ü', 'u').Replace('Ü', 'U');
 ```
 
-### Servis Arayüzü
-
-```csharp
-public interface ISmsService
-{
-    Task SendAppointmentCreatedAsync(string toPhone, string customerName, string businessName, DateTime appointmentTime);
-    Task SendAppointmentStatusChangedAsync(string toPhone, string customerName, string businessName, DateTime appointmentTime, string status);
-    Task SendAppointmentCancelledAsync(string toPhone, string customerName, string businessName, DateTime appointmentTime);
-    Task SendAppointmentReminderAsync(string toPhone, string customerName, string businessName, DateTime appointmentTime);
-}
-```
-
 ### Twilio Hesap Notları
 
-| Özellik                  | Trial Hesap          | Ücretli Hesap         |
-| ------------------------ | -------------------- | --------------------- |
-| Mesaj öneki              | `Sent from your Twilio trial account -` | Yok |
-| Alphanumeric Sender ID   | ❌ Desteklenmiyor    | ✅ Ülkeye göre kayıt gerekir |
-| Gönderim kısıtlaması     | Yalnızca doğrulanmış numaralar | Tüm numaralar |
-| Türkiye SMS fiyatı       | —                    | ~$0.05 / SMS          |
+| Özellik                | Trial Hesap                             | Ücretli Hesap                |
+| ---------------------- | --------------------------------------- | ---------------------------- |
+| Mesaj öneki            | `Sent from your Twilio trial account -` | Yok                          |
+| Alphanumeric Sender ID | ❌ Desteklenmiyor                       | ✅ Ülkeye göre kayıt gerekir |
+| Gönderim kısıtlaması   | Yalnızca doğrulanmış numaralar          | Tüm numaralar                |
+| Türkiye SMS fiyatı     | —                                       | ~$0.05 / SMS                 |
 
 > **Not:** SMS hatası uygulamayı durdurmaz; hatalar yalnızca loglanır. Telefon numarası olmayan kullanıcılara SMS gönderimi otomatik olarak atlanır.
 
@@ -372,6 +416,7 @@ public interface ISmsService
    - 📱 Durum SMS'i gönderilir
    - 📡 Anlık bildirim iletilir
 8. After completion, receiver reviews provider
+   - ⏰ ReminderBackgroundService randevu öncesi otomatik SMS hatırlatması gönderir
 
 ---
 
@@ -420,6 +465,8 @@ Uygulama başlarken aşağıdaki kategoriler otomatik yüklenir:
 - **Education**
 - **Legal & Consulting**
 
+> **Not:** Development ortamında uygulama her başladığında veritabanı sıfırlanır (`EnsureDeleted` + `Migrate`). Production'da yalnızca `Migrate` çalışır, mevcut veriler korunur.
+
 ---
 
 ## 🧩 Testing
@@ -442,6 +489,12 @@ dotnet test
 ## 🚀 Deployment
 
 Docker Compose ile tüm servisler (PostgreSQL + Redis + API) tek komutla ayağa kalkar. Alternatif olarak Azure App Service, AWS Elastic Beanstalk gibi cloud platformlarına doğrudan deploy edilebilir.
+
+**Production checklist:**
+- `appsettings.json` içindeki tüm secret'ları environment variable'a taşı
+- CORS origin listesini production domain'leriyle güncelle
+- `EnsureDeleted` kodunun `IsDevelopment()` guard'ı içinde kaldığını doğrula
+- SignalR için Redis backplane ekle (horizontal scaling durumunda)
 
 ---
 
