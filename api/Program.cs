@@ -15,6 +15,7 @@ using Microsoft.OpenApi.Models;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
+DotNetEnv.Env.Load(); // ← en üste, builder'dan önce
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog(
