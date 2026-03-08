@@ -44,7 +44,6 @@ public class BusinessControllerUnitTests
         return controller;
     }
 
-    // Provider kaydı + provider profili oluşturur, provider.Id döner
     private async Task<int> SeedProviderAsync(AppDbContext db, int userId = 1)
     {
         var user = new User
@@ -57,7 +56,6 @@ public class BusinessControllerUnitTests
             Role = "Provider",
         };
         db.Users.Add(user);
-
         var provider = new Provider
         {
             UserId = userId,
@@ -70,15 +68,17 @@ public class BusinessControllerUnitTests
         return provider.Id;
     }
 
+    private static IActionResult Unwrap<T>(ActionResult<T> result) =>
+        result.Result ?? (IActionResult)new OkObjectResult(result.Value);
+
     // ── GET ALL ─────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task GetAll_ShouldReturn200_WithEmptyList()
     {
         var db = CreateDb();
-        var controller = CreateController(db);
-        var result = await controller.GetAll(null, null, 1, 10);
-        Assert.IsType<OkObjectResult>(result);
+        var result = await CreateController(db).GetAll(null, null, 1, 10);
+        Assert.IsType<OkObjectResult>(Unwrap(result));
     }
 
     // ── GET BY ID ────────────────────────────────────────────────────────────
@@ -87,9 +87,8 @@ public class BusinessControllerUnitTests
     public async Task GetById_ShouldReturn404_WhenNotExists()
     {
         var db = CreateDb();
-        var controller = CreateController(db);
-        var result = await controller.GetById(9999);
-        Assert.IsType<NotFoundObjectResult>(result);
+        var result = await CreateController(db).GetById(9999);
+        Assert.IsType<NotFoundObjectResult>(Unwrap(result));
     }
 
     [Fact]
@@ -103,7 +102,7 @@ public class BusinessControllerUnitTests
         );
         var id = db.Businesses.First().Id;
         var result = await controller.GetById(id);
-        Assert.IsType<OkObjectResult>(result);
+        Assert.IsType<OkObjectResult>(Unwrap(result));
     }
 
     // ── CREATE ───────────────────────────────────────────────────────────────
@@ -113,19 +112,19 @@ public class BusinessControllerUnitTests
     {
         var db = CreateDb();
         await SeedProviderAsync(db, 1);
-        var controller = CreateController(db, userId: 1);
-        var result = await controller.Create(
-            new BusinessDto(
-                "Test İşletme",
-                "Açıklama",
-                "Adres",
-                "İstanbul",
-                "5001234567",
-                null,
-                null
-            )
-        );
-        Assert.IsType<CreatedAtActionResult>(result);
+        var result = await CreateController(db, userId: 1)
+            .Create(
+                new BusinessDto(
+                    "Test İşletme",
+                    "Açıklama",
+                    "Adres",
+                    "İstanbul",
+                    "5001234567",
+                    null,
+                    null
+                )
+            );
+        Assert.IsType<CreatedAtActionResult>(Unwrap(result));
     }
 
     [Fact]
@@ -133,18 +132,18 @@ public class BusinessControllerUnitTests
     {
         var db = CreateDb();
         await SeedProviderAsync(db, 1);
-        var controller = CreateController(db, userId: 1);
-        await controller.Create(
-            new BusinessDto(
-                "Test İşletme",
-                "Açıklama",
-                "Adres",
-                "İstanbul",
-                "5001234567",
-                null,
-                null
-            )
-        );
+        await CreateController(db, userId: 1)
+            .Create(
+                new BusinessDto(
+                    "Test İşletme",
+                    "Açıklama",
+                    "Adres",
+                    "İstanbul",
+                    "5001234567",
+                    null,
+                    null
+                )
+            );
         Assert.Equal(1, db.Businesses.Count());
         Assert.Equal("Test İşletme", db.Businesses.First().Name);
     }
@@ -153,12 +152,9 @@ public class BusinessControllerUnitTests
     public async Task Create_ShouldReturn400_WhenNoProviderProfile()
     {
         var db = CreateDb();
-        // Provider profili olmayan kullanıcı
-        var controller = CreateController(db, userId: 99);
-        var result = await controller.Create(
-            new BusinessDto("Test", "Desc", "Addr", "İstanbul", "5001234567", null, null)
-        );
-        Assert.IsType<BadRequestObjectResult>(result);
+        var result = await CreateController(db, userId: 99)
+            .Create(new BusinessDto("Test", "Desc", "Addr", "İstanbul", "5001234567", null, null));
+        Assert.IsType<BadRequestObjectResult>(Unwrap(result));
     }
 
     // ── UPDATE ───────────────────────────────────────────────────────────────
@@ -177,7 +173,7 @@ public class BusinessControllerUnitTests
             id,
             new BusinessDto("Yeni", "Desc", "Addr", "İstanbul", "123", null, null)
         );
-        Assert.IsType<OkObjectResult>(result);
+        Assert.IsType<OkObjectResult>(Unwrap(result));
         Assert.Equal("Yeni", db.Businesses.First().Name);
     }
 
@@ -186,12 +182,9 @@ public class BusinessControllerUnitTests
     {
         var db = CreateDb();
         await SeedProviderAsync(db, 1);
-        var controller = CreateController(db, userId: 1);
-        var result = await controller.Update(
-            9999,
-            new BusinessDto("Yeni", "Desc", "Addr", "İstanbul", "123", null, null)
-        );
-        Assert.IsType<NotFoundObjectResult>(result);
+        var result = await CreateController(db, userId: 1)
+            .Update(9999, new BusinessDto("Yeni", "Desc", "Addr", "İstanbul", "123", null, null));
+        Assert.IsType<NotFoundObjectResult>(Unwrap(result));
     }
 
     [Fact]
@@ -200,17 +193,12 @@ public class BusinessControllerUnitTests
         var db = CreateDb();
         await SeedProviderAsync(db, 1);
         await SeedProviderAsync(db, 2);
-
         var owner = CreateController(db, userId: 1);
         await owner.Create(new BusinessDto("Test", "Desc", "Addr", "İstanbul", "123", null, null));
         var id = db.Businesses.First().Id;
-
-        var other = CreateController(db, userId: 2);
-        var result = await other.Update(
-            id,
-            new BusinessDto("Hack", "Desc", "Addr", "İstanbul", "123", null, null)
-        );
-        Assert.IsType<ForbidResult>(result);
+        var result = await CreateController(db, userId: 2)
+            .Update(id, new BusinessDto("Hack", "Desc", "Addr", "İstanbul", "123", null, null));
+        Assert.IsType<ForbidResult>(Unwrap(result));
     }
 
     // ── DELETE ───────────────────────────────────────────────────────────────
@@ -226,7 +214,7 @@ public class BusinessControllerUnitTests
         );
         var id = db.Businesses.First().Id;
         var result = await controller.Delete(id);
-        Assert.IsType<OkObjectResult>(result);
+        Assert.IsType<OkObjectResult>(Unwrap(result));
     }
 
     [Fact]
@@ -234,9 +222,8 @@ public class BusinessControllerUnitTests
     {
         var db = CreateDb();
         await SeedProviderAsync(db, 1);
-        var controller = CreateController(db, userId: 1);
-        var result = await controller.Delete(9999);
-        Assert.IsType<NotFoundObjectResult>(result);
+        var result = await CreateController(db, userId: 1).Delete(9999);
+        Assert.IsType<NotFoundObjectResult>(Unwrap(result));
     }
 
     [Fact]
@@ -245,13 +232,10 @@ public class BusinessControllerUnitTests
         var db = CreateDb();
         await SeedProviderAsync(db, 1);
         await SeedProviderAsync(db, 2);
-
         var owner = CreateController(db, userId: 1);
         await owner.Create(new BusinessDto("Test", "Desc", "Addr", "İstanbul", "123", null, null));
         var id = db.Businesses.First().Id;
-
-        var other = CreateController(db, userId: 2);
-        var result = await other.Delete(id);
-        Assert.IsType<ForbidResult>(result);
+        var result = await CreateController(db, userId: 2).Delete(id);
+        Assert.IsType<ForbidResult>(Unwrap(result));
     }
 }

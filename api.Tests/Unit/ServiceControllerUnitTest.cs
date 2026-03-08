@@ -52,7 +52,6 @@ public class ServiceControllerUnitTests
             Role = "Provider",
         };
         db.Users.Add(user);
-
         var provider = new Provider
         {
             UserId = userId,
@@ -60,7 +59,6 @@ public class ServiceControllerUnitTests
             Bio = "B",
         };
         db.Providers.Add(provider);
-
         var category = new Category
         {
             Id = 100,
@@ -69,7 +67,6 @@ public class ServiceControllerUnitTests
             Description = "D",
         };
         db.Categories.Add(category);
-
         var business = new Business
         {
             Name = "Test",
@@ -81,7 +78,6 @@ public class ServiceControllerUnitTests
         };
         db.Businesses.Add(business);
         await db.SaveChangesAsync();
-
         var service = new Service
         {
             Name = "Test Hizmet",
@@ -93,9 +89,11 @@ public class ServiceControllerUnitTests
         };
         db.Services.Add(service);
         await db.SaveChangesAsync();
-
         return (business.Id, service.Id);
     }
+
+    private static IActionResult Unwrap<T>(ActionResult<T> result) =>
+        result.Result ?? (IActionResult)new OkObjectResult(result.Value);
 
     // ── GET ALL ─────────────────────────────────────────────────────────────
 
@@ -103,9 +101,8 @@ public class ServiceControllerUnitTests
     public async Task GetAll_ShouldReturn200()
     {
         var db = CreateDb();
-        var controller = CreateController(db);
-        var result = await controller.GetAll(null, null, null, null);
-        Assert.IsType<OkObjectResult>(result);
+        var result = await CreateController(db).GetAll(null, null, null, null);
+        Assert.IsType<OkObjectResult>(Unwrap(result));
     }
 
     // ── GET BY ID ────────────────────────────────────────────────────────────
@@ -115,18 +112,16 @@ public class ServiceControllerUnitTests
     {
         var db = CreateDb();
         var (_, serviceId) = await SeedAsync(db);
-        var controller = CreateController(db);
-        var result = await controller.GetById(serviceId);
-        Assert.IsType<OkObjectResult>(result);
+        var result = await CreateController(db).GetById(serviceId);
+        Assert.IsType<OkObjectResult>(Unwrap(result));
     }
 
     [Fact]
     public async Task GetById_ShouldReturn404_WhenNotExists()
     {
         var db = CreateDb();
-        var controller = CreateController(db);
-        var result = await controller.GetById(9999);
-        Assert.IsType<NotFoundObjectResult>(result);
+        var result = await CreateController(db).GetById(9999);
+        Assert.IsType<NotFoundObjectResult>(Unwrap(result));
     }
 
     // ── CREATE ───────────────────────────────────────────────────────────────
@@ -136,9 +131,9 @@ public class ServiceControllerUnitTests
     {
         var db = CreateDb();
         var (businessId, _) = await SeedAsync(db, userId: 1);
-        var controller = CreateController(db, userId: 1);
-        var result = await controller.Create(new ServiceDto("Yeni", "D", 100, 30, 100, businessId));
-        Assert.IsType<CreatedAtActionResult>(result);
+        var result = await CreateController(db, userId: 1)
+            .Create(new ServiceDto("Yeni", "D", 100, 30, 100, businessId));
+        Assert.IsType<CreatedAtActionResult>(Unwrap(result));
     }
 
     [Fact]
@@ -146,9 +141,9 @@ public class ServiceControllerUnitTests
     {
         var db = CreateDb();
         await SeedAsync(db, userId: 1);
-        var controller = CreateController(db, userId: 1);
-        var result = await controller.Create(new ServiceDto("H", "D", 100, 30, 100, 9999));
-        Assert.IsType<NotFoundObjectResult>(result);
+        var result = await CreateController(db, userId: 1)
+            .Create(new ServiceDto("H", "D", 100, 30, 100, 9999));
+        Assert.IsType<NotFoundObjectResult>(Unwrap(result));
     }
 
     [Fact]
@@ -156,8 +151,6 @@ public class ServiceControllerUnitTests
     {
         var db = CreateDb();
         var (businessId, _) = await SeedAsync(db, userId: 1);
-
-        // userId 2 için ayrı provider seed et
         var user2 = new User
         {
             Id = 2,
@@ -168,18 +161,18 @@ public class ServiceControllerUnitTests
             Role = "Provider",
         };
         db.Users.Add(user2);
-        var p2 = new Provider
-        {
-            UserId = 2,
-            Title = "T",
-            Bio = "B",
-        };
-        db.Providers.Add(p2);
+        db.Providers.Add(
+            new Provider
+            {
+                UserId = 2,
+                Title = "T",
+                Bio = "B",
+            }
+        );
         await db.SaveChangesAsync();
-
-        var controller = CreateController(db, userId: 2);
-        var result = await controller.Create(new ServiceDto("H", "D", 100, 30, 100, businessId));
-        Assert.IsType<ForbidResult>(result);
+        var result = await CreateController(db, userId: 2)
+            .Create(new ServiceDto("H", "D", 100, 30, 100, businessId));
+        Assert.IsType<ForbidResult>(Unwrap(result));
     }
 
     // ── UPDATE ───────────────────────────────────────────────────────────────
@@ -189,12 +182,9 @@ public class ServiceControllerUnitTests
     {
         var db = CreateDb();
         var (businessId, serviceId) = await SeedAsync(db, userId: 1);
-        var controller = CreateController(db, userId: 1);
-        var result = await controller.Update(
-            serviceId,
-            new ServiceDto("Güncel", "D", 200, 60, 100, businessId)
-        );
-        Assert.IsType<OkObjectResult>(result);
+        var result = await CreateController(db, userId: 1)
+            .Update(serviceId, new ServiceDto("Güncel", "D", 200, 60, 100, businessId));
+        Assert.IsType<OkObjectResult>(Unwrap(result));
     }
 
     [Fact]
@@ -202,9 +192,9 @@ public class ServiceControllerUnitTests
     {
         var db = CreateDb();
         await SeedAsync(db, userId: 1);
-        var controller = CreateController(db, userId: 1);
-        var result = await controller.Update(9999, new ServiceDto("Güncel", "D", 200, 60, 100, 1));
-        Assert.IsType<NotFoundObjectResult>(result);
+        var result = await CreateController(db, userId: 1)
+            .Update(9999, new ServiceDto("Güncel", "D", 200, 60, 100, 1));
+        Assert.IsType<NotFoundObjectResult>(Unwrap(result));
     }
 
     // ── DELETE ───────────────────────────────────────────────────────────────
@@ -214,9 +204,8 @@ public class ServiceControllerUnitTests
     {
         var db = CreateDb();
         var (_, serviceId) = await SeedAsync(db, userId: 1);
-        var controller = CreateController(db, userId: 1);
-        var result = await controller.Delete(serviceId);
-        Assert.IsType<OkObjectResult>(result);
+        var result = await CreateController(db, userId: 1).Delete(serviceId);
+        Assert.IsType<OkObjectResult>(Unwrap(result));
     }
 
     [Fact]
@@ -224,8 +213,7 @@ public class ServiceControllerUnitTests
     {
         var db = CreateDb();
         await SeedAsync(db, userId: 1);
-        var controller = CreateController(db, userId: 1);
-        var result = await controller.Delete(9999);
-        Assert.IsType<NotFoundObjectResult>(result);
+        var result = await CreateController(db, userId: 1).Delete(9999);
+        Assert.IsType<NotFoundObjectResult>(Unwrap(result));
     }
 }

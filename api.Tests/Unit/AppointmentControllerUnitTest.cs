@@ -26,8 +26,8 @@ public class AppointmentControllerUnitTests
         string role = "Receiver"
     )
     {
-        var notify = new Mock<INotificationService>();
-        notify
+        var notifyMock = new Mock<INotificationService>();
+        notifyMock
             .Setup(n =>
                 n.SendAsync(
                     It.IsAny<int>(),
@@ -38,8 +38,71 @@ public class AppointmentControllerUnitTests
                 )
             )
             .Returns(Task.CompletedTask);
+        notifyMock
+            .Setup(n =>
+                n.SendAppointmentStatusChangedAsync(
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<DateTime>()
+                )
+            )
+            .Returns(Task.CompletedTask);
 
-        var controller = new AppointmentController(db, notify.Object);
+        var emailMock = new Mock<IEmailService>();
+        emailMock
+            .Setup(e => e.SendAppointmentCreatedAsync(It.IsAny<AppointmentEmailDto>()))
+            .Returns(Task.CompletedTask);
+        emailMock
+            .Setup(e =>
+                e.SendAppointmentStatusChangedAsync(
+                    It.IsAny<AppointmentEmailDto>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string?>()
+                )
+            )
+            .Returns(Task.CompletedTask);
+
+        var smsMock = new Mock<ISmsService>();
+        smsMock
+            .Setup(s =>
+                s.SendAppointmentCreatedAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<DateTime>()
+                )
+            )
+            .Returns(Task.CompletedTask);
+        smsMock
+            .Setup(s =>
+                s.SendAppointmentCancelledAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<DateTime>()
+                )
+            )
+            .Returns(Task.CompletedTask);
+        smsMock
+            .Setup(s =>
+                s.SendAppointmentStatusChangedAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<DateTime>(),
+                    It.IsAny<string>()
+                )
+            )
+            .Returns(Task.CompletedTask);
+
+        var controller = new AppointmentController(
+            db,
+            notifyMock.Object,
+            emailMock.Object,
+            smsMock.Object
+        );
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext
@@ -80,7 +143,6 @@ public class AppointmentControllerUnitTests
             Role = "Provider",
         };
         db.Users.AddRange(receiverUser, providerUser);
-
         var provider = new Provider
         {
             UserId = 2,
@@ -88,7 +150,6 @@ public class AppointmentControllerUnitTests
             Bio = "B",
         };
         db.Providers.Add(provider);
-
         var category = new Category
         {
             Id = 1,
@@ -97,7 +158,6 @@ public class AppointmentControllerUnitTests
             Description = "D",
         };
         db.Categories.Add(category);
-
         var business = new Business
         {
             Name = "B",
@@ -109,7 +169,6 @@ public class AppointmentControllerUnitTests
         };
         db.Businesses.Add(business);
         await db.SaveChangesAsync();
-
         var service = new Service
         {
             Name = "Hizmet",
@@ -120,7 +179,6 @@ public class AppointmentControllerUnitTests
             CategoryId = 1,
         };
         db.Services.Add(service);
-
         var slot = new TimeSlot
         {
             ProviderId = provider.Id,
@@ -130,24 +188,20 @@ public class AppointmentControllerUnitTests
         };
         db.TimeSlots.Add(slot);
         await db.SaveChangesAsync();
-
         return (provider.Id, service.Id, slot.Id);
     }
 
-    // ── CREATE ───────────────────────────────────────────────────────────────
+    private static IActionResult Unwrap<T>(ActionResult<T> result) =>
+        result.Result ?? (IActionResult)new OkObjectResult(result.Value);
 
     [Fact]
     public async Task Create_ShouldReturn201_WhenValidData()
     {
         var db = CreateDb();
         var (providerId, serviceId, slotId) = await SeedAsync(db);
-        var controller = CreateController(db, userId: 1, role: "Receiver");
-
-        var result = await controller.Create(
-            new AppointmentCreateDto(providerId, serviceId, slotId, "Not")
-        );
-
-        Assert.IsType<CreatedAtActionResult>(result);
+        var result = await CreateController(db, userId: 1, role: "Receiver")
+            .Create(new AppointmentCreateDto(providerId, serviceId, slotId, "Not"));
+        Assert.IsType<CreatedAtActionResult>(Unwrap(result));
     }
 
     [Fact]
@@ -155,18 +209,11 @@ public class AppointmentControllerUnitTests
     {
         var db = CreateDb();
         var (providerId, serviceId, slotId) = await SeedAsync(db);
-
-        // Slotu dolu yap
-        var slot = db.TimeSlots.Find(slotId)!;
-        slot.Status = SlotStatus.Booked;
+        db.TimeSlots.Find(slotId)!.Status = SlotStatus.Booked;
         await db.SaveChangesAsync();
-
-        var controller = CreateController(db, userId: 1);
-        var result = await controller.Create(
-            new AppointmentCreateDto(providerId, serviceId, slotId, null)
-        );
-
-        Assert.IsType<BadRequestObjectResult>(result);
+        var result = await CreateController(db, userId: 1)
+            .Create(new AppointmentCreateDto(providerId, serviceId, slotId, null));
+        Assert.IsType<BadRequestObjectResult>(Unwrap(result));
     }
 
     [Fact]
@@ -174,35 +221,26 @@ public class AppointmentControllerUnitTests
     {
         var db = CreateDb();
         var (providerId, serviceId, _) = await SeedAsync(db);
-        var controller = CreateController(db, userId: 1);
-
-        var result = await controller.Create(
-            new AppointmentCreateDto(providerId, serviceId, 9999, null)
-        );
-
-        Assert.IsType<BadRequestObjectResult>(result);
+        var result = await CreateController(db, userId: 1)
+            .Create(new AppointmentCreateDto(providerId, serviceId, 9999, null));
+        Assert.IsType<BadRequestObjectResult>(Unwrap(result));
     }
-
-    // ── GET MINE ─────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task GetMine_ShouldReturn200()
     {
         var db = CreateDb();
-        var controller = CreateController(db, userId: 1);
-        var result = await controller.GetMine(new AppointmentFilterDto(null, null, null));
-        Assert.IsType<OkObjectResult>(result);
+        var result = await CreateController(db, userId: 1)
+            .GetMine(new AppointmentFilterDto(null, null, null));
+        Assert.IsType<OkObjectResult>(Unwrap(result));
     }
-
-    // ── CANCEL ───────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Cancel_ShouldReturn404_WhenNotExists()
     {
         var db = CreateDb();
-        var controller = CreateController(db, userId: 1);
-        var result = await controller.Cancel(9999, new CancelDto(null));
-        Assert.IsType<NotFoundObjectResult>(result);
+        var result = await CreateController(db, userId: 1).Cancel(9999, new CancelDto(null));
+        Assert.IsType<NotFoundObjectResult>(Unwrap(result));
     }
 
     [Fact]
@@ -210,14 +248,11 @@ public class AppointmentControllerUnitTests
     {
         var db = CreateDb();
         var (providerId, serviceId, slotId) = await SeedAsync(db);
-
-        var creator = CreateController(db, userId: 1);
-        await creator.Create(new AppointmentCreateDto(providerId, serviceId, slotId, null));
+        await CreateController(db, userId: 1)
+            .Create(new AppointmentCreateDto(providerId, serviceId, slotId, null));
         var apptId = db.Appointments.First().Id;
-
-        var other = CreateController(db, userId: 99);
-        var result = await other.Cancel(apptId, new CancelDto(null));
-        Assert.IsType<ForbidResult>(result);
+        var result = await CreateController(db, userId: 99).Cancel(apptId, new CancelDto(null));
+        Assert.IsType<ForbidResult>(Unwrap(result));
     }
 
     [Fact]
@@ -225,27 +260,20 @@ public class AppointmentControllerUnitTests
     {
         var db = CreateDb();
         var (providerId, serviceId, slotId) = await SeedAsync(db);
-
-        var controller = CreateController(db, userId: 1);
-        await controller.Create(new AppointmentCreateDto(providerId, serviceId, slotId, null));
+        await CreateController(db, userId: 1)
+            .Create(new AppointmentCreateDto(providerId, serviceId, slotId, null));
         var apptId = db.Appointments.First().Id;
-
-        var result = await controller.Cancel(apptId, new CancelDto(null));
-        Assert.IsType<OkObjectResult>(result);
+        var result = await CreateController(db, userId: 1).Cancel(apptId, new CancelDto(null));
+        Assert.IsType<OkObjectResult>(Unwrap(result));
     }
-
-    // ── UPDATE STATUS ─────────────────────────────────────────────────────────
 
     [Fact]
     public async Task UpdateStatus_ShouldReturn404_WhenNotExists()
     {
         var db = CreateDb();
-        var controller = CreateController(db, userId: 2, role: "Provider");
-        var result = await controller.UpdateStatus(
-            9999,
-            new AppointmentUpdateStatusDto("confirm", null)
-        );
-        Assert.IsType<NotFoundObjectResult>(result);
+        var result = await CreateController(db, userId: 2, role: "Provider")
+            .UpdateStatus(9999, new AppointmentUpdateStatusDto("confirm", null));
+        Assert.IsType<NotFoundObjectResult>(Unwrap(result));
     }
 
     [Fact]
@@ -253,17 +281,11 @@ public class AppointmentControllerUnitTests
     {
         var db = CreateDb();
         var (providerId, serviceId, slotId) = await SeedAsync(db);
-
-        var receiver = CreateController(db, userId: 1, role: "Receiver");
-        await receiver.Create(new AppointmentCreateDto(providerId, serviceId, slotId, null));
+        await CreateController(db, userId: 1, role: "Receiver")
+            .Create(new AppointmentCreateDto(providerId, serviceId, slotId, null));
         var apptId = db.Appointments.First().Id;
-
-        // Provider (userId=2) onayla
-        var provider = CreateController(db, userId: 2, role: "Provider");
-        var result = await provider.UpdateStatus(
-            apptId,
-            new AppointmentUpdateStatusDto("confirm", null)
-        );
-        Assert.IsType<OkObjectResult>(result);
+        var result = await CreateController(db, userId: 2, role: "Provider")
+            .UpdateStatus(apptId, new AppointmentUpdateStatusDto("confirm", null));
+        Assert.IsType<OkObjectResult>(Unwrap(result));
     }
 }
