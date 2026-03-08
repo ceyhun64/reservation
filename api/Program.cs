@@ -142,15 +142,14 @@ builder.Services.AddScoped<ISmsService, SmsService>();
 builder.Services.AddScoped<ITwoFactorService, TwoFactorService>(); // ← bunu ekle
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-// AllowCredentials() — SignalR WebSocket için zorunlu!
+var allowedOrigins =
+    builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? new[] { "http://localhost:3000" };
+
 builder.Services.AddCors(opt =>
     opt.AddPolicy(
         "WebApp",
-        p =>
-            p.WithOrigins("http://localhost:3000", "http://localhost:5191")
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials() // ← SignalR için eklendi
+        p => p.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()
     )
 );
 
