@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using api.Data;
+using api.Models;
 using api.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -72,8 +73,7 @@ public static class TestFactory
     private static WebApplicationFactory<Program>? _baseFactory;
     private static readonly object _lock = new();
 
-    // Admin seed kullanıcısı — SeedData'daki admin bilgileriyle eşleşmeli
-    // Eğer SeedData'da farklı bir admin varsa bu değerleri güncelleyin.
+    // Admin test kullanıcısı — InMemory DB'ye direkt eklenir
     private const string AdminSeedEmail = "admin@rezervo.com";
     private const string AdminSeedPassword = "Test.123!";
 
@@ -146,8 +146,39 @@ public static class TestFactory
                     ConfigureTestServices(services, "TestDb_Shared")
                 );
             });
+
+            // InMemory DB'ye admin kullanıcısını direkt ekle.
+            // Program.cs test ortamında DataSeeder.SeedAsync çalıştırmadığı için gerekli.
+            SeedAdminUserAsync(_baseFactory).GetAwaiter().GetResult();
         }
         return _baseFactory;
+    }
+
+    /// <summary>
+    /// InMemory DB'ye admin kullanıcısını direkt ekler.
+    /// </summary>
+    private static async Task SeedAdminUserAsync(WebApplicationFactory<Program> factory)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var exists = await db.Users.AnyAsync(u => u.Email == AdminSeedEmail);
+        if (exists)
+            return;
+
+        db.Users.Add(
+            new User
+            {
+                FullName = "Admin Kullanıcı",
+                Email = AdminSeedEmail,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(AdminSeedPassword),
+                Phone = "5301237001",
+                Role = "Admin",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+            }
+        );
+        await db.SaveChangesAsync();
     }
 
     public static HttpClient CreateClient(string? dbName = null)
@@ -161,12 +192,15 @@ public static class TestFactory
             builder.ConfigureServices(services => ConfigureTestServices(services, dbName));
         });
 
+        // İzole DB için de admin seed yap
+        SeedAdminUserAsync(factory).GetAwaiter().GetResult();
+
         return factory.CreateClient();
     }
 
     /// <summary>
     /// Register + login yaparak JWT token döner.
-    /// Admin rolü için seed kullanıcısına login yapar (register denemez).
+    /// Admin rolü için DB'ye seed edilmiş kullanıcıyla login yapar.
     /// </summary>
     public static async Task<string> GetTokenAsync(
         HttpClient client,
@@ -176,7 +210,7 @@ public static class TestFactory
     )
     {
         // Admin rolü register endpoint'i üzerinden atanamaz;
-        // SeedData'daki admin kullanıcısıyla direkt login yapılır.
+        // SeedAdminUserAsync ile eklenen kullanıcıyla direkt login yapılır.
         if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
         {
             return await LoginAsync(client, AdminSeedEmail, AdminSeedPassword);
