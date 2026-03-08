@@ -54,6 +54,10 @@
 │   │   ├── 20260228084929_InitialCreate.cs
 │   │   ├── 20260302105446_UpdateModelChanges.Designer.cs
 │   │   ├── 20260302105446_UpdateModelChanges.cs
+│   │   ├── 20260306115238_AddTwoFactorAuth.Designer.cs
+│   │   ├── 20260306115238_AddTwoFactorAuth.cs
+│   │   ├── 20260306121447_AddTrustedDevices.Designer.cs
+│   │   ├── 20260306121447_AddTrustedDevices.cs
 │   │   └── AppDbContextModelSnapshot.cs
 │   ├── Models
 │   │   ├── Appointment.cs
@@ -64,6 +68,7 @@
 │   │   ├── Review.cs
 │   │   ├── Service.cs
 │   │   ├── TimeSlot.cs
+│   │   ├── TrustedDevice.cs
 │   │   └── User.cs
 │   ├── Program.cs
 │   ├── Repositories
@@ -79,7 +84,8 @@
 │   │   ├── NotificationService.cs
 │   │   ├── RedisCacheServices.cs
 │   │   ├── ReminderBackgroundService.cs
-│   │   └── SmsService.cs
+│   │   ├── SmsService.cs
+│   │   └── TwoFactorService.cs
 │   ├── Validators
 │   │   ├── AppointmentValidator.cs
 │   │   ├── AuthValidator.cs
@@ -199,7 +205,8 @@
     │   │   │   └── AppointmentForm.tsx
     │   │   ├── auth
     │   │   │   ├── Login.tsx
-    │   │   │   └── Register.tsx
+    │   │   │   ├── Register.tsx
+    │   │   │   └── TwoFactorSetup.tsx
     │   │   ├── businesses
     │   │   │   ├── Businesses.tsx
     │   │   │   └── BusinessesDetail.tsx

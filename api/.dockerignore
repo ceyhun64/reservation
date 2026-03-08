@@ -1,0 +1,14 @@
+bin/
+obj/
+.git/
+.gitignore
+*.md
+logs/
+.env
+.env.*
+appsettings.Development.json
+api.Tests/
+web/
+docker-compose.yml
+project_tree.txt
+readme.md

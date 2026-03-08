@@ -2,10 +2,12 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 COPY *.csproj ./
-RUN dotnet restore
+RUN dotnet restore --no-cache
 
 COPY . ./
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet publish -c Release -o /app/publish \
+    --no-restore \
+    /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
