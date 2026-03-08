@@ -10,18 +10,35 @@ public class ReviewControllerTests
     {
         var client = TestFactory.CreateClient();
         var email = $"{Guid.NewGuid()}@test.com";
-        await client.PostAsJsonAsync("/api/auth/register", new
+        await client.PostAsJsonAsync(
+            "/api/auth/register",
+            new
+            {
+                fullName = "Test User",
+                email,
+                password = "Test123!",
+                phone = "5551234567",
+                role,
+            }
+        );
+        var loginRes = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { email, password = "Test123!" }
+        );
+        // YENİ — case-insensitive
+        var opts = new System.Text.Json.JsonSerializerOptions
         {
-            fullName = "Test User",
-            email,
-            password = "Test123!",
-            phone = "5551234567",
-            role,
-        });
-        var loginRes = await client.PostAsJsonAsync("/api/auth/login", new { email, password = "Test123!" });
-        var data = await loginRes.Content.ReadFromJsonAsync<Dictionary<string, object>>();
-        var dataObj = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(data!["data"].ToString()!);
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", dataObj!["token"].ToString());
+            PropertyNameCaseInsensitive = true,
+        };
+        var data = await loginRes.Content.ReadFromJsonAsync<Dictionary<string, object>>(opts);
+        var dataObj = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
+            data!["data"].ToString()!,
+            opts
+        );
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            dataObj!["token"].ToString()
+        );
         return client;
     }
 
@@ -41,12 +58,15 @@ public class ReviewControllerTests
     public async Task Create_ShouldReturn401_WhenNoToken()
     {
         var client = TestFactory.CreateClient();
-        var response = await client.PostAsJsonAsync("/api/reviews", new
-        {
-            appointmentId = 1,
-            rating = 5,
-            comment = "Harika!",
-        });
+        var response = await client.PostAsJsonAsync(
+            "/api/reviews",
+            new
+            {
+                appointmentId = 1,
+                rating = 5,
+                comment = "Harika!",
+            }
+        );
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -54,12 +74,15 @@ public class ReviewControllerTests
     public async Task Create_ShouldReturn404_WhenAppointmentNotExists()
     {
         var client = await CreateAuthenticatedClient("Receiver");
-        var response = await client.PostAsJsonAsync("/api/reviews", new
-        {
-            appointmentId = 9999,
-            rating = 5,
-            comment = "Test",
-        });
+        var response = await client.PostAsJsonAsync(
+            "/api/reviews",
+            new
+            {
+                appointmentId = 9999,
+                rating = 5,
+                comment = "Test",
+            }
+        );
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -69,7 +92,10 @@ public class ReviewControllerTests
     public async Task Reply_ShouldReturn401_WhenNoToken()
     {
         var client = TestFactory.CreateClient();
-        var response = await client.PatchAsJsonAsync("/api/reviews/1/reply", new { reply = "Teşekkürler!" });
+        var response = await client.PatchAsJsonAsync(
+            "/api/reviews/1/reply",
+            new { reply = "Teşekkürler!" }
+        );
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -77,7 +103,10 @@ public class ReviewControllerTests
     public async Task Reply_ShouldReturn404_WhenNotExists()
     {
         var client = await CreateAuthenticatedClient("Provider");
-        var response = await client.PatchAsJsonAsync("/api/reviews/9999/reply", new { reply = "Cevap" });
+        var response = await client.PatchAsJsonAsync(
+            "/api/reviews/9999/reply",
+            new { reply = "Cevap" }
+        );
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 

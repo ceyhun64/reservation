@@ -460,30 +460,33 @@ public static class DataSeeder
         await db.SaveChangesAsync();
 
         // ── 9. SEQUENCE RESET ─────────────────────────────────────────────────
-#pragma warning disable EF1002
-        foreach (
-            var table in new[]
-            {
-                "Users",
-                "Providers",
-                "Businesses",
-                "Services",
-                "TimeSlots",
-                "Appointments",
-                "Reviews",
-                "Notifications",
-            }
-        )
+        if (db.Database.IsRelational())
         {
-            await db.Database.ExecuteSqlRawAsync(
-                $"""
-                SELECT setval(
-                    pg_get_serial_sequence('"{table}"', 'Id'),
-                    (SELECT MAX("Id") FROM "{table}"));
-                """
-            );
-        }
+#pragma warning disable EF1002
+            foreach (
+                var table in new[]
+                {
+                    "Users",
+                    "Providers",
+                    "Businesses",
+                    "Services",
+                    "TimeSlots",
+                    "Appointments",
+                    "Reviews",
+                    "Notifications",
+                }
+            )
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    $"""
+                    SELECT setval(
+                        pg_get_serial_sequence('"{table}"', 'Id'),
+                        (SELECT MAX("Id") FROM "{table}"));
+                    """
+                );
+            }
 #pragma warning restore EF1002
+        }
     }
 
     private static DateTime Utc(int y, int m, int d) => new(y, m, d, 0, 0, 0, DateTimeKind.Utc);

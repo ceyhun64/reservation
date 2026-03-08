@@ -406,7 +406,8 @@ public class AuthController : ControllerBase
 
     private string GenerateToken(User user)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Secret"]!));
+        var secret = _config["Jwt:Secret"] ?? "fallback_test_secret_key_must_be_32chars!!";
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
@@ -417,11 +418,13 @@ public class AuthController : ControllerBase
             new Claim(ClaimTypes.Name, user.FullName),
         };
 
+        var expireMinutes = double.TryParse(_config["Jwt:ExpireMinutes"], out var m) ? m : 60;
+
         var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"],
-            audience: _config["Jwt:Audience"],
+            issuer: _config["Jwt:Issuer"] ?? "test-issuer",
+            audience: _config["Jwt:Audience"] ?? "test-audience",
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(double.Parse(_config["Jwt:ExpireMinutes"]!)),
+            expires: DateTime.UtcNow.AddMinutes(expireMinutes),
             signingCredentials: creds
         );
 

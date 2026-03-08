@@ -4,24 +4,13 @@ using System.Net.Http.Json;
 
 namespace api.Tests.Integration;
 
-public class CategoryControllerTests
+public class CategoryControllerTest
 {
     private async Task<HttpClient> CreateAdminClient()
     {
         var client = TestFactory.CreateClient();
-        var email = $"{Guid.NewGuid()}@test.com";
-        await client.PostAsJsonAsync("/api/auth/register", new
-        {
-            fullName = "Admin",
-            email,
-            password = "Test123!",
-            phone = "5551234567",
-            role = "Admin",
-        });
-        var loginRes = await client.PostAsJsonAsync("/api/auth/login", new { email, password = "Test123!" });
-        var data = await loginRes.Content.ReadFromJsonAsync<Dictionary<string, object>>();
-        var dataObj = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(data!["data"].ToString()!);
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", dataObj!["token"].ToString());
+        var token = await TestFactory.GetTokenAsync(client, role: "Admin");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;
     }
 
@@ -49,16 +38,21 @@ public class CategoryControllerTests
     public async Task GetById_ShouldReturn200_WhenExists()
     {
         var client = await CreateAdminClient();
-        var createRes = await client.PostAsJsonAsync("/api/categories", new
-        {
-            name = "Test Kategori",
-            description = "Açıklama",
-            displayOrder = 1,
-        });
+        var createRes = await client.PostAsJsonAsync(
+            "/api/categories",
+            new
+            {
+                name = "Test Kategori",
+                description = "Açıklama",
+                displayOrder = 1,
+            }
+        );
         Assert.Equal(HttpStatusCode.Created, createRes.StatusCode);
 
         var created = await createRes.Content.ReadFromJsonAsync<Dictionary<string, object>>();
-        var dataObj = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(created!["data"].ToString()!);
+        var dataObj = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
+            created!["data"].ToString()!
+        );
         var id = dataObj!["id"].ToString();
 
         var response = await TestFactory.CreateClient().GetAsync($"/api/categories/{id}");
@@ -71,12 +65,15 @@ public class CategoryControllerTests
     public async Task Create_ShouldReturn201_WhenAdmin()
     {
         var client = await CreateAdminClient();
-        var response = await client.PostAsJsonAsync("/api/categories", new
-        {
-            name = "Güzellik",
-            description = "Güzellik kategorisi",
-            displayOrder = 1,
-        });
+        var response = await client.PostAsJsonAsync(
+            "/api/categories",
+            new
+            {
+                name = "Güzellik",
+                description = "Güzellik kategorisi",
+                displayOrder = 1,
+            }
+        );
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
@@ -84,12 +81,15 @@ public class CategoryControllerTests
     public async Task Create_ShouldReturn401_WhenNoToken()
     {
         var client = TestFactory.CreateClient();
-        var response = await client.PostAsJsonAsync("/api/categories", new
-        {
-            name = "Test",
-            description = "D",
-            displayOrder = 1,
-        });
+        var response = await client.PostAsJsonAsync(
+            "/api/categories",
+            new
+            {
+                name = "Test",
+                description = "D",
+                displayOrder = 1,
+            }
+        );
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -99,12 +99,15 @@ public class CategoryControllerTests
     public async Task Update_ShouldReturn401_WhenNoToken()
     {
         var client = TestFactory.CreateClient();
-        var response = await client.PutAsJsonAsync("/api/categories/1", new
-        {
-            name = "Updated",
-            description = "D",
-            displayOrder = 1,
-        });
+        var response = await client.PutAsJsonAsync(
+            "/api/categories/1",
+            new
+            {
+                name = "Updated",
+                description = "D",
+                displayOrder = 1,
+            }
+        );
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 

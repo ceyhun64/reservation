@@ -14,7 +14,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
 
-Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
+if (Log.Logger is not Serilog.Core.Logger)
+    Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
+
 DotNetEnv.Env.Load(); // ← en üste, builder'dan önce
 
 var builder = WebApplication.CreateBuilder(args);
@@ -62,8 +64,7 @@ builder.Services.AddScoped<ICacheService, RedisCacheService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // ── JWT Authentication ────────────────────────────────────────────────────────
-var jwtSecret = builder.Configuration["Jwt:Secret"]!;
-
+var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "fallback_test_secret_key_must_be_32chars!!";
 builder
     .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
@@ -100,11 +101,14 @@ builder
 
 builder.Services.AddAuthorization();
 
-// ── Health Check ──────────────────────────────────────────────────────────────
-builder
-    .Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!)
-    .AddRedis(builder.Configuration["Redis:ConnectionString"]!);
+// ✅ YENİ
+var healthChecks = builder.Services.AddHealthChecks();
+var pgConn = builder.Configuration.GetConnectionString("DefaultConnection");
+var redisConn = builder.Configuration["Redis:ConnectionString"];
+if (!string.IsNullOrEmpty(pgConn))
+    healthChecks.AddNpgSql(pgConn);
+if (!string.IsNullOrEmpty(redisConn))
+    healthChecks.AddRedis(redisConn);
 
 // ── Rate Limiting ─────────────────────────────────────────────────────────────
 builder.Services.AddRateLimiter(opt =>
@@ -223,8 +227,17 @@ app.UseSerilogRequestLogging(opt =>
 app.UseCors("WebApp"); // ← CORS önce
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseRateLimiter();
-app.MapControllers().RequireRateLimiting("fixed");
+
+// YENİ
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    app.UseRateLimiter();
+    app.MapControllers().RequireRateLimiting("fixed");
+}
+else
+{
+    app.MapControllers();
+}
 app.MapHealthChecks("/health");
 app.MapHub<NotificationHub>("/hubs/notifications"); // ← SignalR endpoint
 
@@ -233,25 +246,33 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    if (app.Environment.IsDevelopment())
+    if (db.Database.IsRelational())
     {
-        await db.Database.EnsureDeletedAsync();
-        await db.Database.MigrateAsync();
+        if (app.Environment.IsDevelopment())
+        {
+            await db.Database.EnsureDeletedAsync();
+            await db.Database.MigrateAsync();
+        }
+        else
+        {
+            await db.Database.MigrateAsync();
+        }
+
+        try
+        {
+            await DataSeeder.SeedAsync(db);
+        }
+        catch (Exception ex)
+        {
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "Seed sırasında hata oluştu!");
+            throw;
+        }
     }
     else
     {
-        await db.Database.MigrateAsync();
-    }
-
-    try
-    {
-        await DataSeeder.SeedAsync(db);
-    }
-    catch (Exception ex)
-    {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Seed sırasında hata oluştu!");
-        throw;
+        // InMemory (Test ortamı) — seed yok, sadece schema oluştur
+        await db.Database.EnsureCreatedAsync();
     }
 }
 

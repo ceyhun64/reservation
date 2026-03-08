@@ -25,9 +25,15 @@ public class BusinessControllerTests
             "/api/auth/login",
             new { email, password = "Test123!" }
         );
-        var data = await loginRes.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+        // YENİ — case-insensitive
+        var opts = new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+        };
+        var data = await loginRes.Content.ReadFromJsonAsync<Dictionary<string, object>>(opts);
         var dataObj = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
-            data!["data"].ToString()!
+            data!["data"].ToString()!,
+            opts
         );
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
