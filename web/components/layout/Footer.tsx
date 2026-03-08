@@ -9,16 +9,16 @@ const FOOTER_LINKS = [
 
 export default function Footer() {
   return (
-    <footer className="border-t border-border bg-background pb-18">
-      <div className="max-w-6xl mx-auto px-6 md:px-14 py-8">
+    <footer className="border-t border-border/60 bg-background pb-20">
+      <div className="max-w-6xl mx-auto px-6 md:px-14 py-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           {/* Logo + telif */}
-          <div className="flex items-center gap-2.5">
-            <div className="size-6 border border-primary/40 flex items-center justify-center text-primary/60 text-xs">
+          <div className="flex items-center gap-3">
+            <div className="size-5 border border-primary/50 flex items-center justify-center text-primary/70 text-[10px] rotate-45">
               ◈
             </div>
-            <span className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} Rezervo. Tüm hakları saklıdır.
+            <span className="text-[11px] tracking-widest uppercase text-muted-foreground/60 font-medium">
+              © {new Date().getFullYear()} Rezervo
             </span>
           </div>
 
@@ -27,11 +27,11 @@ export default function Footer() {
             {FOOTER_LINKS.map((link, i) => (
               <span key={link.href} className="flex items-center gap-1">
                 {i > 0 && (
-                  <Separator orientation="vertical" className="h-3 mx-1" />
+                  <span className="w-px h-3 bg-border/60 mx-2 inline-block" />
                 )}
                 <Link
                   href={link.href}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-[11px] uppercase tracking-wider text-muted-foreground/50 hover:text-foreground transition-colors duration-200"
                 >
                   {link.label}
                 </Link>

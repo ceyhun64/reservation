@@ -1,31 +1,80 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import type { AppointmentResponseDto } from "@/types";
+import {
+  Calendar,
+  Building2,
+  User,
+  Clock,
+  Banknote,
+  FileText,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  MinusCircle,
+  HelpCircle,
+  TimerOff,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
-// ─── Status config ────────────────────────────────────────────────────────────
-// AppointmentResponseDto.status: "Pending" | "Confirmed" | "Rejected" | "Completed" | "CancelledByReceiver" | "NoShow"
+// ─── Status config ─────────────────────────────────────────────────────────────
 
 export const STATUS_MAP: Record<
   AppointmentResponseDto["status"],
   {
     label: string;
-    variant: "secondary" | "default" | "destructive" | "outline";
+    color: string; // text color
+    bg: string; // bg + border
+    dot: string;
+    icon: React.ReactNode;
   }
 > = {
-  Pending: { label: "Beklemede", variant: "secondary" },
-  Confirmed: { label: "Onaylandı", variant: "default" },
-  Rejected: { label: "Reddedildi", variant: "destructive" },
-  Completed: { label: "Tamamlandı", variant: "outline" },
-  CancelledByReceiver: { label: "İptal Edildi", variant: "destructive" },
-  NoShow: { label: "Gelmedi", variant: "secondary" },
+  Pending: {
+    label: "Beklemede",
+    color: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-500/8 border-amber-500/20",
+    dot: "bg-amber-400",
+    icon: <AlertCircle className="size-3" />,
+  },
+  Confirmed: {
+    label: "Onaylandı",
+    color: "text-emerald-600 dark:text-emerald-400",
+    bg: "bg-emerald-500/8 border-emerald-500/20",
+    dot: "bg-emerald-400",
+    icon: <CheckCircle2 className="size-3" />,
+  },
+  Rejected: {
+    label: "Reddedildi",
+    color: "text-red-600 dark:text-red-400",
+    bg: "bg-red-500/8 border-red-500/20",
+    dot: "bg-red-400",
+    icon: <XCircle className="size-3" />,
+  },
+  Completed: {
+    label: "Tamamlandı",
+    color: "text-blue-600 dark:text-blue-400",
+    bg: "bg-blue-500/8 border-blue-500/20",
+    dot: "bg-blue-400",
+    icon: <CheckCircle2 className="size-3" />,
+  },
+  CancelledByReceiver: {
+    label: "İptal Edildi",
+    color: "text-muted-foreground/60",
+    bg: "bg-muted/40 border-border/40",
+    dot: "bg-muted-foreground/30",
+    icon: <MinusCircle className="size-3" />,
+  },
+  NoShow: {
+    label: "Gelmedi",
+    color: "text-muted-foreground/50",
+    bg: "bg-muted/30 border-border/30",
+    dot: "bg-muted-foreground/25",
+    icon: <TimerOff className="size-3" />,
+  },
 };
 
-/** Randevunun iptal edilebilir olup olmadığını kontrol eder */
 export function isAppointmentCancellable(
   status: AppointmentResponseDto["status"],
 ): boolean {
@@ -36,11 +85,11 @@ export function isAppointmentCancellable(
 
 export function LoadingDots() {
   return (
-    <div className="flex items-center justify-center min-h-[300px] gap-2">
+    <div className="flex items-center justify-center min-h-[320px] gap-1.5">
       {[0, 150, 300].map((delay) => (
         <span
           key={delay}
-          className="size-1.5 rounded-full bg-primary animate-pulse"
+          className="size-1.5 rounded-full bg-primary/35 animate-pulse"
           style={{ animationDelay: `${delay}ms` }}
         />
       ))}
@@ -66,17 +115,19 @@ export function PageHeader({
   return (
     <div className="flex items-end justify-between flex-wrap gap-4">
       <div>
-        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/40 mb-2">
           — {tag}
         </p>
-        <h1 className="text-3xl font-bold leading-tight">{title}</h1>
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight">
+          {title}
+        </h1>
         {description && (
-          <p className="text-sm text-muted-foreground font-light mt-1">
+          <p className="text-[13px] text-muted-foreground/55 font-light mt-1">
             {description}
           </p>
         )}
       </div>
-      {action}
+      {action && <div>{action}</div>}
     </div>
   );
 }
@@ -97,16 +148,24 @@ export function EmptyState({
   actionHref,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] text-center gap-4">
-      <span className="text-4xl text-primary/20 select-none">◈</span>
-      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-        — {title}
-      </p>
-      <p className="text-sm text-muted-foreground font-light max-w-xs">
-        {description}
-      </p>
+    <div className="flex flex-col items-center justify-center min-h-[340px] text-center gap-4 border border-dashed border-border/35 rounded-2xl">
+      <span className="text-[44px] text-muted-foreground/8 select-none font-bold">
+        ◈
+      </span>
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/35 mb-1.5">
+          {title}
+        </p>
+        <p className="text-[12px] text-muted-foreground/45 font-light max-w-xs">
+          {description}
+        </p>
+      </div>
       {actionLabel && actionHref && (
-        <Button asChild className="mt-2">
+        <Button
+          asChild
+          size="sm"
+          className="mt-1 h-8 text-[11px] uppercase tracking-widest font-semibold"
+        >
           <Link href={actionHref}>{actionLabel}</Link>
         </Button>
       )}
@@ -123,26 +182,29 @@ interface StatBarProps {
 export function StatBar({ stats }: StatBarProps) {
   return (
     <div
-      className="grid border border-border"
+      className="grid rounded-xl border border-border/50 bg-muted/15 overflow-hidden"
       style={{ gridTemplateColumns: `repeat(${stats.length}, 1fr)` }}
     >
       {stats.map((s, i) => (
         <div
           key={i}
-          className={[
-            "flex flex-col items-center justify-center py-6 px-4 text-center gap-1",
-            i < stats.length - 1 ? "border-r border-border" : "",
-          ].join(" ")}
+          className={cn(
+            "flex flex-col items-center justify-center py-5 px-4 text-center gap-1.5 relative",
+            i < stats.length - 1 && "border-r border-border/40",
+          )}
         >
+          {s.highlight && (
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[2px] w-8 bg-primary/40 rounded-full" />
+          )}
           <span
-            className={[
-              "text-3xl font-bold leading-none",
-              s.highlight ? "text-primary" : "text-foreground",
-            ].join(" ")}
+            className={cn(
+              "text-[34px] font-bold leading-none tracking-tighter tabular-nums",
+              s.highlight ? "text-primary" : "text-foreground/80",
+            )}
           >
             {s.value}
           </span>
-          <span className="text-[11px] uppercase tracking-widest text-muted-foreground">
+          <span className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/40 font-semibold">
             {s.label}
           </span>
         </div>
@@ -181,74 +243,165 @@ export function AppointmentCard({
   const status = STATUS_MAP[a.status] ?? STATUS_MAP.Pending;
 
   return (
-    <Card className="flex flex-col rounded-md">
-      <CardHeader className="flex flex-row items-start justify-between gap-3 pb-3">
-        <CardTitle className="text-sm font-semibold leading-snug">
-          {a.serviceName ?? "Hizmet"}
-        </CardTitle>
-        <Badge variant={status.variant}>{status.label}</Badge>
-      </CardHeader>
+    <div className="group flex flex-col rounded-xl border border-border/45 bg-card overflow-hidden hover:border-border/75 hover:shadow-md hover:shadow-black/5 transition-all duration-200">
+      {/* Status accent line */}
+      <div className={cn("h-[2px] w-full", status.dot.replace("bg-", "bg-"))} />
 
-      <Separator />
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/40 mb-1">
+            #{String(a.id).padStart(5, "0")}
+          </p>
+          <h3 className="text-[14px] font-bold tracking-tight leading-snug truncate">
+            {a.serviceName ?? "Hizmet"}
+          </h3>
+        </div>
 
-      <CardContent className="flex flex-col gap-2 pt-4 pb-5">
+        {/* Status badge */}
+        <span
+          className={cn(
+            "shrink-0 inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider border",
+            status.color,
+            status.bg,
+          )}
+        >
+          {status.icon}
+          {status.label}
+        </span>
+      </div>
+
+      {/* Divider */}
+      <div className="h-px bg-border/30 mx-4" />
+
+      {/* Body */}
+      <div className="flex flex-col gap-2 px-4 pt-3 pb-4 flex-1">
         {showReceiver && a.receiverName && (
-          <InfoRow icon="◉" text={a.receiverName} />
+          <MetaRow
+            icon={<User className="size-3" />}
+            value={a.receiverName}
+            bold
+          />
         )}
-        {a.businessName && <InfoRow icon="◈" text={a.businessName} muted />}
-        {a.providerName && <InfoRow icon="◎" text={a.providerName} muted />}
-        <InfoRow
-          icon="◷"
-          muted
-          text={new Date(a.startTime).toLocaleString("tr-TR", {
+        {a.businessName && (
+          <MetaRow
+            icon={<Building2 className="size-3" />}
+            value={a.businessName}
+          />
+        )}
+        {a.providerName && (
+          <MetaRow icon={<User className="size-3" />} value={a.providerName} />
+        )}
+        <MetaRow
+          icon={<Clock className="size-3" />}
+          value={new Date(a.startTime).toLocaleString("tr-TR", {
             weekday: "short",
             day: "numeric",
             month: "long",
-            year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
           })}
         />
-        {/* pricePaid - AppointmentResponseDto'daki alan adı */}
         {a.pricePaid !== undefined && a.pricePaid > 0 && (
-          <InfoRow icon="₺" text={String(a.pricePaid)} highlight />
+          <MetaRow
+            icon={<Banknote className="size-3" />}
+            value={`₺${a.pricePaid}`}
+            accent
+          />
         )}
-        {/* receiverNotes - AppointmentResponseDto'daki alan adı */}
         {a.receiverNotes && (
-          <InfoRow icon="◦" text={a.receiverNotes} muted italic />
+          <MetaRow
+            icon={<FileText className="size-3" />}
+            value={a.receiverNotes}
+            muted
+            italic
+          />
         )}
 
-        <div className="flex flex-col gap-2 mt-2">
-          {onAction && actionLabel && (
-            <Button
-              variant={actionVariant}
-              size="sm"
-              className="w-full"
-              disabled={actionLoading}
-              onClick={() => onAction(a.id)}
-            >
-              {actionLoading ? "İşleniyor..." : actionLabel}
-            </Button>
-          )}
-          {onSecondaryAction && secondaryActionLabel && (
-            <Button
-              variant={secondaryActionVariant}
-              size="sm"
-              className="w-full"
-              disabled={secondaryActionLoading}
-              onClick={() => onSecondaryAction(a.id)}
-            >
-              {secondaryActionLoading ? "İşleniyor..." : secondaryActionLabel}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        {/* Actions */}
+        {(onAction || onSecondaryAction) && (
+          <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-border/25">
+            {onAction && actionLabel && (
+              <Button
+                variant={actionVariant}
+                size="sm"
+                className="w-full h-8 text-[11px] uppercase tracking-widest font-semibold"
+                disabled={actionLoading}
+                onClick={() => onAction(a.id)}
+              >
+                {actionLoading ? (
+                  <span className="flex items-center gap-1.5">
+                    <span className="size-1.5 rounded-full bg-current animate-pulse" />
+                    İşleniyor
+                  </span>
+                ) : (
+                  actionLabel
+                )}
+              </Button>
+            )}
+            {onSecondaryAction && secondaryActionLabel && (
+              <Button
+                variant={secondaryActionVariant}
+                size="sm"
+                className="w-full h-8 text-[11px] uppercase tracking-widest font-semibold"
+                disabled={secondaryActionLoading}
+                onClick={() => onSecondaryAction(a.id)}
+              >
+                {secondaryActionLoading ? (
+                  <span className="flex items-center gap-1.5">
+                    <span className="size-1.5 rounded-full bg-current animate-pulse" />
+                    İşleniyor
+                  </span>
+                ) : (
+                  secondaryActionLabel
+                )}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
-// ─── InfoRow ──────────────────────────────────────────────────────────────────
+// ─── MetaRow ──────────────────────────────────────────────────────────────────
 
+export function MetaRow({
+  icon,
+  value,
+  bold,
+  accent,
+  muted,
+  italic,
+}: {
+  icon: React.ReactNode;
+  value: string;
+  bold?: boolean;
+  accent?: boolean;
+  muted?: boolean;
+  italic?: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="text-primary/35 mt-0.5 shrink-0">{icon}</span>
+      <span
+        className={cn(
+          "text-[12px] leading-relaxed",
+          bold && "font-semibold text-foreground",
+          accent && "font-bold text-primary",
+          muted && "text-muted-foreground/50 font-light",
+          italic && "italic",
+          !bold && !accent && !muted && "text-foreground/70",
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+// ─── InfoRow (legacy alias) ───────────────────────────────────────────────────
+// Geriye dönük uyumluluk için tutuldu
 export function InfoRow({
   icon,
   text,
@@ -263,22 +416,12 @@ export function InfoRow({
   italic?: boolean;
 }) {
   return (
-    <div className="flex items-start gap-2.5">
-      <span className="text-[11px] text-primary mt-0.5 shrink-0">{icon}</span>
-      <span
-        className={[
-          "text-xs leading-relaxed",
-          muted
-            ? "text-muted-foreground font-light"
-            : "text-foreground font-medium",
-          highlight ? "text-primary font-medium" : "",
-          italic ? "italic" : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      >
-        {text}
-      </span>
-    </div>
+    <MetaRow
+      icon={<span className="text-[10px]">{icon}</span>}
+      value={text}
+      muted={muted}
+      accent={highlight}
+      italic={italic}
+    />
   );
 }

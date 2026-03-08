@@ -16,28 +16,25 @@ import {
   User,
   Clock,
   CheckCircle2,
-  AlertCircle,
-  ChevronRight,
   Star,
   MapPin,
   Scissors,
   Building2,
   Activity,
+  ArrowUpRight,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const STATUS_CONFIG: Record<
   AppointmentResponseDto["status"],
-  {
-    label: string;
-    variant: "default" | "secondary" | "destructive" | "outline";
-  }
+  { label: string; dot: string }
 > = {
-  Pending: { label: "Beklemede", variant: "outline" },
-  Confirmed: { label: "Onaylandı", variant: "default" },
-  Completed: { label: "Tamamlandı", variant: "secondary" },
-  Rejected: { label: "Reddedildi", variant: "destructive" },
-  CancelledByReceiver: { label: "İptal Edildi", variant: "destructive" },
-  NoShow: { label: "Gelmedi", variant: "outline" },
+  Pending: { label: "Beklemede", dot: "bg-amber-400" },
+  Confirmed: { label: "Onaylandı", dot: "bg-emerald-400" },
+  Completed: { label: "Tamamlandı", dot: "bg-blue-400" },
+  Rejected: { label: "Reddedildi", dot: "bg-red-400" },
+  CancelledByReceiver: { label: "İptal Edildi", dot: "bg-red-300" },
+  NoShow: { label: "Gelmedi", dot: "bg-gray-400" },
 };
 
 const MOCK_FAVOURITES = [
@@ -118,385 +115,413 @@ export default function ReceiverDashboard() {
   if (loading) return <DashboardSkeleton />;
 
   return (
-    <div className="min-h-screen bg-muted/40 p-6 space-y-6">
+    <div className="space-y-6">
       {/* Hero */}
-      <Card className="bg-primary text-primary-foreground border-0">
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap items-center justify-between gap-6">
+      <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card">
+        <div
+          className="absolute inset-0 opacity-[0.02]"
+          style={{
+            backgroundImage:
+              "linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
+          }}
+        />
+        <div className="absolute right-0 top-0 bottom-0 w-64 bg-gradient-to-l from-primary/[0.05] to-transparent pointer-events-none" />
+
+        <div className="relative px-6 py-6">
+          <div className="flex flex-wrap items-center justify-between gap-5">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-primary-foreground/10 border border-primary-foreground/20 flex items-center justify-center text-xl font-bold">
+              <div className="size-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-[16px] font-bold text-primary">
                 {initials}
               </div>
               <div>
-                <p className="text-xs uppercase tracking-widest text-primary-foreground/60 mb-1">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/50 mb-0.5 font-medium">
                   Müşteri Paneli
                 </p>
-                <h1 className="text-2xl text-background font-bold">
+                <h2 className="text-[20px] font-bold tracking-tight">
                   Hoş geldin, {user?.name?.split(" ")[0] ?? "Kullanıcı"}
-                </h1>
-                <p className="text-sm text-primary-foreground/50 mt-0.5">
+                </h2>
+                <p className="text-[12px] text-muted-foreground/50 mt-0.5">
                   {user?.email}
                 </p>
               </div>
             </div>
 
-            <div className="flex divide-x divide-primary-foreground/10">
-              {[
-                { label: "Toplam", value: stats.total },
-                { label: "Yaklaşan", value: stats.upcoming },
-                { label: "Tamamlanan", value: stats.completed },
-              ].map((s, i) => (
-                <div key={i} className="px-6 text-center">
-                  <p className="text-2xl text-background font-bold">{s.value}</p>
-                  <p className="text-xs text-primary-foreground/80 uppercase tracking-wider mt-1">
-                    {s.label}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* İki Kolon */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Sol */}
-        <div className="space-y-6">
-          {/* Kişisel Bilgiler */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                Kişisel Bilgiler
-              </CardTitle>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/dashboard/profile">
-                  Düzenle <ChevronRight className="ml-1 h-3 w-3" />
+            <div className="flex items-center gap-5">
+              <div className="flex divide-x divide-border/50">
+                {[
+                  { label: "Toplam", value: stats.total },
+                  { label: "Yaklaşan", value: stats.upcoming },
+                  { label: "Tamamlanan", value: stats.completed },
+                ].map((s, i) => (
+                  <div key={i} className="px-5 text-center">
+                    <p className="text-[28px] font-bold tracking-tighter leading-none">
+                      {s.value}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider mt-1">
+                      {s.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <Button
+                size="sm"
+                asChild
+                className="h-8 text-[11px] uppercase tracking-wider shrink-0"
+              >
+                <Link href="/businesses">
+                  Randevu Al
+                  <ArrowUpRight className="h-3 w-3 ml-1.5" />
                 </Link>
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-2">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          {
+            label: "Toplam Randevu",
+            value: stats.total,
+            icon: CalendarDays,
+            href: "/dashboard/appointments",
+          },
+          {
+            label: "Yaklaşan",
+            value: stats.upcoming,
+            icon: Clock,
+            href: "/dashboard/appointments",
+            accent: stats.upcoming > 0,
+          },
+          {
+            label: "Tamamlanan",
+            value: stats.completed,
+            icon: CheckCircle2,
+            href: "/dashboard/appointments?status=Completed",
+          },
+          {
+            label: "Okunmamış",
+            value: stats.unread,
+            icon: Bell,
+            href: "/dashboard/notifications",
+            accent: stats.unread > 0,
+          },
+        ].map((s, i) => (
+          <Link key={i} href={s.href} className="block group">
+            <Card
+              className={cn(
+                "border-border/50 hover:border-border/90 transition-all duration-200 hover:shadow-sm hover:shadow-black/5",
+                s.accent && "border-primary/20 bg-primary/[0.02]",
+              )}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <s.icon
+                    className={cn(
+                      "h-4 w-4",
+                      s.accent ? "text-primary" : "text-muted-foreground/40",
+                    )}
+                  />
+                  <ArrowUpRight className="h-3 w-3 text-muted-foreground/20 group-hover:text-muted-foreground/50 transition-colors" />
+                </div>
+                <p
+                  className={cn(
+                    "text-[30px] font-bold tracking-tighter leading-none",
+                    s.accent && "text-primary",
+                  )}
+                >
+                  {s.value}
+                </p>
+                <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider mt-1.5">
+                  {s.label}
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+
+      {/* Two columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Left */}
+        <div className="space-y-5">
+          {/* Personal info */}
+          <SectionCard
+            title="Kişisel Bilgiler"
+            action={{ label: "Düzenle", href: "/dashboard/profile" }}
+          >
+            <div className="space-y-1.5">
               {[
+                { icon: User, label: "Ad Soyad", value: user?.name ?? "—" },
                 {
-                  icon: <User className="h-4 w-4" />,
-                  label: "Ad Soyad",
-                  value: user?.name ?? "—",
-                },
-                {
-                  icon: <span className="text-sm">@</span>,
+                  icon: () => <span className="text-[11px]">@</span>,
                   label: "E-posta",
                   value: user?.email ?? "—",
                 },
+                { icon: Activity, label: "Rol", value: "Müşteri" },
                 {
-                  icon: <Activity className="h-4 w-4" />,
-                  label: "Rol",
-                  value: "Müşteri",
-                },
-                {
-                  icon: <CheckCircle2 className="h-4 w-4" />,
+                  icon: CheckCircle2,
                   label: "Durum",
                   value: "Aktif",
+                  badge: true,
                 },
               ].map((row, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 rounded-md bg-muted/50 px-3 py-2.5"
+                  className="flex items-center gap-3 rounded-lg bg-muted/30 px-3 py-2.5"
                 >
-                  <span className="text-muted-foreground shrink-0">
-                    {row.icon}
-                  </span>
-                  <span className="text-xs text-muted-foreground w-20 shrink-0">
+                  <row.icon className="size-3.5 text-muted-foreground/40 shrink-0" />
+                  <span className="text-[10px] text-muted-foreground/40 uppercase tracking-wider w-16 shrink-0">
                     {row.label}
                   </span>
-                  <span className="text-sm font-medium truncate flex-1">
+                  <span className="text-[12px] font-medium truncate flex-1">
                     {row.value}
                   </span>
-                  {row.label === "Durum" && (
-                    <Badge variant="default" className="text-xs">
+                  {row.badge && (
+                    <span className="text-[10px] font-medium text-emerald-600 bg-emerald-500/8 border border-emerald-500/20 px-2 py-0.5 rounded">
                       Aktif
-                    </Badge>
+                    </span>
                   )}
                 </div>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </SectionCard>
 
-          {/* Aktivite */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                Aktivite Özeti
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  {
-                    label: "Toplam Randevu",
-                    value: stats.total,
-                    icon: <CalendarDays className="h-5 w-5" />,
-                  },
-                  {
-                    label: "Yaklaşan",
-                    value: stats.upcoming,
-                    icon: <Clock className="h-5 w-5" />,
-                  },
-                  {
-                    label: "Tamamlanan",
-                    value: stats.completed,
-                    icon: <CheckCircle2 className="h-5 w-5" />,
-                  },
-                  {
-                    label: "Okunmamış",
-                    value: stats.unread,
-                    icon: <Bell className="h-5 w-5" />,
-                  },
-                ].map((s, i) => (
-                  <div
-                    key={i}
-                    className="rounded-lg border bg-card p-4 space-y-2 hover:shadow-sm transition-shadow"
-                  >
-                    <span className="text-muted-foreground">{s.icon}</span>
-                    <p className="text-2xl font-bold">{s.value}</p>
-                    <p className="text-xs text-muted-foreground">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Favori İşletmeler */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                Favori İşletmeler
-              </CardTitle>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/businesses">
-                  Tümünü Gör <ArrowRight className="ml-1 h-3 w-3" />
-                </Link>
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-2">
+          {/* Favorites */}
+          <SectionCard
+            title="Favori İşletmeler"
+            action={{ label: "Keşfet", href: "/businesses" }}
+          >
+            <div className="space-y-1.5">
               {MOCK_FAVOURITES.map((fav) => (
                 <Link
                   key={fav.id}
                   href={`/businesses/${fav.id}`}
-                  className="block"
+                  className="block group"
                 >
-                  <div className="flex items-center gap-3 rounded-lg border bg-card px-3 py-3 hover:shadow-sm transition-shadow cursor-pointer">
-                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <Scissors className="h-4 w-4 text-primary" />
+                  <div className="flex items-center gap-3 rounded-lg border border-border/40 hover:border-border/70 px-3 py-2.5 transition-all">
+                    <div className="size-8 rounded-lg bg-primary/8 flex items-center justify-center shrink-0">
+                      <Scissors className="h-3.5 w-3.5 text-primary/60" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">
+                      <p className="text-[12px] font-semibold truncate">
                         {fav.name}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-[10px] text-muted-foreground/50">
                           {fav.category}
                         </span>
-                        <span className="text-xs text-muted-foreground">•</span>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <span className="text-muted-foreground/30 text-[10px]">
+                          ·
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/50 flex items-center gap-0.5">
                           <MapPin className="h-2.5 w-2.5" /> {fav.city}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <Star className="h-3 w-3 fill-warning text-warning" />
-                      <span className="text-xs font-semibold">
+                      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                      <span className="text-[11px] font-semibold">
                         {fav.rating}
                       </span>
                     </div>
                   </div>
                 </Link>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </SectionCard>
         </div>
 
-        {/* Sağ */}
-        <div className="space-y-6">
-          {/* Yaklaşan */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                Yaklaşan Randevular
-              </CardTitle>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/dashboard/appointments">
-                  Tümü <ArrowRight className="ml-1 h-3 w-3" />
-                </Link>
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {upcomingAppointments.length === 0 ? (
-                <EmptySlot
-                  icon={<CalendarDays className="h-6 w-6" />}
-                  text="Yaklaşan randevunuz bulunmuyor"
-                  action={{ label: "Randevu Al", href: "/businesses" }}
-                />
-              ) : (
-                <div className="space-y-2">
-                  {upcomingAppointments.map((a) => (
-                    <AppointmentRow key={a.id} appointment={a} />
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Tamamlananlar */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                Son Tamamlananlar
-              </CardTitle>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/dashboard/appointments?status=Completed">
-                  Tümü <ArrowRight className="ml-1 h-3 w-3" />
-                </Link>
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {recentAppointments.length === 0 ? (
-                <EmptySlot
-                  icon={<CheckCircle2 className="h-6 w-6" />}
-                  text="Henüz tamamlanan randevu yok"
-                />
-              ) : (
-                <div className="space-y-2">
-                  {recentAppointments.map((a) => (
-                    <AppointmentRow key={a.id} appointment={a} />
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Bildirimler */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                  Bildirimler
-                </CardTitle>
-                {stats.unread > 0 && (
-                  <Badge variant="destructive" className="text-xs px-1.5 py-0">
-                    {stats.unread}
-                  </Badge>
-                )}
-              </div>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/dashboard/notifications">
-                  Tümü <ArrowRight className="ml-1 h-3 w-3" />
-                </Link>
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {notifications.length === 0 ? (
-                <EmptySlot
-                  icon={<Bell className="h-6 w-6" />}
-                  text="Yeni bildirim yok"
-                />
-              ) : (
-                <div className="space-y-2">
-                  {notifications.map((n, i) => (
-                    <div
-                      key={n.id ?? i}
-                      className={`flex items-start gap-3 rounded-lg border px-3 py-2.5 ${
-                        !n.isRead
-                          ? "bg-muted/60 border-border"
-                          : "bg-background"
-                      }`}
-                    >
-                      <div className="mt-0.5 shrink-0 text-muted-foreground">
-                        {!n.isRead ? (
-                          <AlertCircle className="h-3.5 w-3.5 text-primary" />
-                        ) : (
-                          <Bell className="h-3.5 w-3.5" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        {n.title && (
-                          <p className="text-xs font-semibold mb-0.5">
-                            {n.title}
-                          </p>
-                        )}
-                        {n.message && (
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {n.message}
-                          </p>
-                        )}
-                        {n.createdAt && (
-                          <p className="text-xs text-muted-foreground/60 mt-1">
-                            {new Date(n.createdAt).toLocaleString("tr-TR", {
-                              day: "numeric",
-                              month: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </p>
-                        )}
-                      </div>
-                      {!n.isRead && (
-                        <span className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Hızlı Erişim */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                Hızlı Erişim
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  {
-                    label: "İşletme Keşfet",
-                    href: "/businesses",
-                    icon: <Building2 className="h-4 w-4" />,
-                  },
-                  {
-                    label: "Tüm Randevular",
-                    href: "/dashboard/appointments",
-                    icon: <CalendarDays className="h-4 w-4" />,
-                  },
-                  {
-                    label: "Bildirimler",
-                    href: "/dashboard/notifications",
-                    icon: <Bell className="h-4 w-4" />,
-                  },
-                  {
-                    label: "Profilim",
-                    href: "/dashboard/profile",
-                    icon: <User className="h-4 w-4" />,
-                  },
-                ].map((item, i) => (
-                  <Button
-                    key={i}
-                    variant="outline"
-                    className="justify-start gap-2 h-10"
-                    asChild
-                  >
-                    <Link href={item.href}>
-                      {item.icon}
-                      <span className="text-xs font-medium">{item.label}</span>
-                    </Link>
-                  </Button>
+        {/* Right */}
+        <div className="space-y-5">
+          {/* Upcoming */}
+          <SectionCard
+            title="Yaklaşan Randevular"
+            badge={stats.upcoming}
+            action={{ label: "Tümü", href: "/dashboard/appointments" }}
+          >
+            {upcomingAppointments.length === 0 ? (
+              <EmptySlot
+                icon={CalendarDays}
+                text="Yaklaşan randevunuz bulunmuyor"
+                action={{ label: "Randevu Al", href: "/businesses" }}
+              />
+            ) : (
+              <div className="space-y-1.5">
+                {upcomingAppointments.map((a) => (
+                  <AppointmentRow key={a.id} appointment={a} />
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </SectionCard>
+
+          {/* Completed */}
+          <SectionCard
+            title="Son Tamamlananlar"
+            action={{
+              label: "Tümü",
+              href: "/dashboard/appointments?status=Completed",
+            }}
+          >
+            {recentAppointments.length === 0 ? (
+              <EmptySlot
+                icon={CheckCircle2}
+                text="Henüz tamamlanan randevu yok"
+              />
+            ) : (
+              <div className="space-y-1.5">
+                {recentAppointments.map((a) => (
+                  <AppointmentRow key={a.id} appointment={a} />
+                ))}
+              </div>
+            )}
+          </SectionCard>
+
+          {/* Notifications */}
+          <SectionCard
+            title="Bildirimler"
+            badge={stats.unread}
+            badgeDestructive
+            action={{ label: "Tümü", href: "/dashboard/notifications" }}
+          >
+            {notifications.length === 0 ? (
+              <EmptySlot icon={Bell} text="Yeni bildirim yok" />
+            ) : (
+              <div className="space-y-1.5">
+                {notifications.map((n, i) => (
+                  <div
+                    key={n.id ?? i}
+                    className={cn(
+                      "flex items-start gap-3 rounded-lg border px-3 py-2.5",
+                      !n.isRead
+                        ? "border-primary/15 bg-primary/[0.02]"
+                        : "border-border/30",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "mt-1.5 size-1.5 rounded-full shrink-0",
+                        !n.isRead ? "bg-primary" : "bg-muted-foreground/20",
+                      )}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-semibold truncate">
+                        {n.title}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground/50 line-clamp-1 font-light">
+                        {n.message}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground/35 mt-0.5 font-mono">
+                        {new Date(n.createdAt).toLocaleString("tr-TR", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
         </div>
       </div>
+
+      {/* Quick access */}
+      <Card className="border-border/50">
+        <CardHeader className="pb-3 pt-4">
+          <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/50">
+            Hızlı Erişim
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              { label: "İşletme Keşfet", href: "/businesses", icon: Building2 },
+              {
+                label: "Tüm Randevular",
+                href: "/dashboard/appointments",
+                icon: CalendarDays,
+              },
+              {
+                label: "Bildirimler",
+                href: "/dashboard/notifications",
+                icon: Bell,
+              },
+              { label: "Profilim", href: "/dashboard/profile", icon: User },
+            ].map((item, i) => (
+              <Button
+                key={i}
+                variant="outline"
+                className="justify-start gap-2 h-9 border-border/50 text-[11px] uppercase tracking-wider font-medium"
+                asChild
+              >
+                <Link href={item.href}>
+                  <item.icon className="h-3.5 w-3.5 text-muted-foreground/50" />
+                  {item.label}
+                </Link>
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function SectionCard({
+  title,
+  badge,
+  badgeDestructive,
+  action,
+  children,
+}: {
+  title: string;
+  badge?: number;
+  badgeDestructive?: boolean;
+  action?: { label: string; href: string };
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="border-border/50">
+      <CardHeader className="flex flex-row items-center justify-between pb-3 pt-4">
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/50">
+            {title}
+          </CardTitle>
+          {badge !== undefined && badge > 0 && (
+            <span
+              className={cn(
+                "text-[10px] font-bold px-1.5 py-0.5 rounded",
+                badgeDestructive
+                  ? "bg-destructive/10 text-destructive border border-destructive/20"
+                  : "bg-primary/10 text-primary border border-primary/20",
+              )}
+            >
+              {badge}
+            </span>
+          )}
+        </div>
+        {action && (
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className="h-7 px-2 text-[11px] text-muted-foreground/50 hover:text-foreground uppercase tracking-wider"
+          >
+            <Link href={action.href}>
+              {action.label} <ArrowRight className="ml-1 h-3 w-3" />
+            </Link>
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent className="pb-4">{children}</CardContent>
+    </Card>
   );
 }
 
@@ -507,15 +532,15 @@ function AppointmentRow({
 }) {
   const st = STATUS_CONFIG[a.status] ?? STATUS_CONFIG.Pending;
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5">
-      <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+    <div className="flex items-center gap-3 rounded-lg border border-border/30 hover:border-border/60 px-3 py-2.5 transition-colors">
+      <div className="size-7 rounded-lg bg-muted/50 flex items-center justify-center shrink-0">
+        <CalendarDays className="h-3.5 w-3.5 text-muted-foreground/40" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold truncate">
+        <p className="text-[12px] font-semibold truncate">
           {a.serviceName ?? "Hizmet"}
         </p>
-        <p className="text-xs text-muted-foreground mt-0.5">
+        <p className="text-[11px] text-muted-foreground/50 font-light">
           {new Date(a.startTime).toLocaleString("tr-TR", {
             day: "numeric",
             month: "short",
@@ -524,28 +549,36 @@ function AppointmentRow({
           })}
         </p>
       </div>
-      <Badge variant={st.variant} className="text-xs shrink-0">
-        {st.label}
-      </Badge>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <span className={`size-1.5 rounded-full ${st.dot}`} />
+        <span className="text-[10px] text-muted-foreground/50">{st.label}</span>
+      </div>
     </div>
   );
 }
 
 function EmptySlot({
-  icon,
+  icon: Icon,
   text,
   action,
 }: {
-  icon: React.ReactNode;
+  icon: React.ElementType;
   text: string;
   action?: { label: string; href: string };
 }) {
   return (
-    <div className="flex flex-col items-center justify-center py-8 gap-3">
-      <div className="text-muted-foreground/40">{icon}</div>
-      <p className="text-xs text-muted-foreground text-center">{text}</p>
+    <div className="flex flex-col items-center justify-center py-8 gap-2.5">
+      <Icon className="h-5 w-5 text-muted-foreground/15" />
+      <p className="text-[11px] text-muted-foreground/40 text-center font-light">
+        {text}
+      </p>
       {action && (
-        <Button variant="outline" size="sm" asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          asChild
+          className="h-7 text-[11px] uppercase tracking-wider border-border/50 mt-1"
+        >
           <Link href={action.href}>{action.label}</Link>
         </Button>
       )}
@@ -555,10 +588,15 @@ function EmptySlot({
 
 function DashboardSkeleton() {
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      <Skeleton className="h-32 w-full rounded-xl" />
-      <div className="grid grid-cols-2 gap-6">
-        {[220, 180, 200, 220, 180, 200].map((h, i) => (
+    <div className="space-y-5">
+      <Skeleton className="h-24 w-full rounded-xl" />
+      <div className="grid grid-cols-4 gap-3">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-24 rounded-xl" />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-5">
+        {[200, 260, 240, 200].map((h, i) => (
           <Skeleton key={i} className="rounded-xl" style={{ height: h }} />
         ))}
       </div>

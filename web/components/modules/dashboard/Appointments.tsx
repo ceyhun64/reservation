@@ -10,20 +10,15 @@ import {
 } from "@/lib/api";
 import type { AppointmentResponseDto } from "@/types";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   LoadingDots,
   EmptyState,
   StatBar,
   AppointmentCard,
   PageHeader,
   isAppointmentCancellable,
+  STATUS_MAP,
 } from "./DashboardShared";
+import { cn } from "@/lib/utils";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "Tümü" },
@@ -62,7 +57,6 @@ export default function AppointmentsModule() {
   async function handleConfirm(id: number) {
     if (!session?.token) return;
     setActionId(id);
-    // AppointmentUpdateStatusDto: { action: "confirm" | "reject" | "complete" | "noshow" }
     await updateAppointmentStatus(id, { action: "confirm" }, session.token);
     setAppointments((prev) =>
       prev.map((a) =>
@@ -92,25 +86,13 @@ export default function AppointmentsModule() {
 
   return (
     <div className="flex flex-col gap-8">
+      {/* Header */}
       <PageHeader
         tag={isProvider ? "İşletme Randevuları" : "Randevularım"}
         title={isProvider ? "Gelen Randevular" : "Rezervasyonlarım"}
-        action={
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Durum filtrele" />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        }
       />
 
+      {/* Stats */}
       <StatBar
         stats={[
           { label: "Toplam", value: stats.total },
@@ -119,6 +101,38 @@ export default function AppointmentsModule() {
         ]}
       />
 
+      {/* Filter chips */}
+      <div className="flex flex-wrap gap-1.5">
+        {STATUS_OPTIONS.map((opt) => {
+          const isActive = statusFilter === opt.value;
+          const cfg =
+            opt.value !== "all"
+              ? STATUS_MAP[opt.value as AppointmentResponseDto["status"]]
+              : null;
+
+          return (
+            <button
+              key={opt.value}
+              onClick={() => setStatusFilter(opt.value)}
+              className={cn(
+                "inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-[10px] font-semibold uppercase tracking-wider transition-all border",
+                isActive
+                  ? "bg-foreground text-background border-foreground"
+                  : "border-border/40 text-muted-foreground/50 hover:border-border/70 hover:text-foreground bg-transparent",
+              )}
+            >
+              {cfg && !isActive && (
+                <span
+                  className={cn("size-1.5 rounded-full shrink-0", cfg.dot)}
+                />
+              )}
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Content */}
       {loading ? (
         <LoadingDots />
       ) : appointments.length === 0 ? (

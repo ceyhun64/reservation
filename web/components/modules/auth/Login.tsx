@@ -8,54 +8,41 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertCircle, Loader2, ShieldCheck, ChevronLeft } from "lucide-react";
+import {
+  AlertCircle,
+  Loader2,
+  ShieldCheck,
+  ChevronLeft,
+  ArrowUpRight,
+} from "lucide-react";
 import { loginUser, verifyTwoFactor } from "@/lib/api/auth.api";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { cn } from "@/lib/utils";
 
 type Step = "credentials" | "twoFactor";
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export default function LoginForm() {
   const router = useRouter();
-
-  // Step A — kimlik bilgileri
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  // Step B — 2FA
   const [step, setStep] = useState<Step>("credentials");
   const [tempToken, setTempToken] = useState("");
   const [code, setCode] = useState("");
   const [rememberDevice, setRememberDevice] = useState(false);
-
-  // Ortak
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // ── Step A: Email + şifre ─────────────────────────────────────────────────
 
   async function handleCredentials(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     try {
-      // loginUser() direkt API'yi çağırır — NextAuth devreye girmez.
-      // requiresTwoFactor bayrağını burada okuyabilmek için bu yaklaşım gerekli.
       const data = await loginUser({ email, password });
-
       if (data.data.requiresTwoFactor) {
         setTempToken(data.data.tempToken!);
         setStep("twoFactor");
         return;
       }
-
-      // 2FA yok → JWT'yi NextAuth session'ına yaz
       await finalizeSession({
         token: data.data.token!,
         role: data.data.role!,
@@ -63,27 +50,22 @@ export default function LoginForm() {
         userId: data.data.userId!,
       });
     } catch (err) {
-      // apiRequest, backend hatasını throw new Error(message) ile fırlatır
       setError(err instanceof Error ? err.message : "Bir hata oluştu.");
     } finally {
       setLoading(false);
     }
   }
 
-  // ── Step B: TOTP kodu ─────────────────────────────────────────────────────
-
   async function handleTwoFactor(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     try {
       const data = await verifyTwoFactor({
         tempToken,
         code: code.replace(/\s/g, ""),
         rememberDevice,
       });
-
       await finalizeSession({
         token: data.data.token!,
         role: data.data.role!,
@@ -96,10 +78,6 @@ export default function LoginForm() {
       setLoading(false);
     }
   }
-
-  // ── Session oluştur ───────────────────────────────────────────────────────
-  // Backend JWT'si alındıktan sonra NextAuth'a "verifiedToken" path'i üzerinden
-  // paslanır — authorize() ekstra API isteği yapmadan session oluşturur.
 
   async function finalizeSession(args: {
     token: string;
@@ -115,227 +93,274 @@ export default function LoginForm() {
       verifiedId: String(args.userId),
       redirect: false,
     });
-
     if (res?.error) {
       setError("Oturum oluşturulamadı. Lütfen tekrar deneyin.");
       return;
     }
-
-    // refresh() — NextAuth session'ının server component'lara
-    // hemen yansıması için gerekli
     router.refresh();
     router.push("/dashboard");
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-2.5 mb-12">
-          <div className="size-7 border border-primary flex items-center justify-center text-primary text-sm">
+    <div className="min-h-screen bg-background flex">
+      {/* Left decorative panel */}
+      <div className="hidden lg:flex flex-col justify-between w-[420px] border-r border-border/60 px-12 py-12 bg-muted/[0.015]">
+        <Link href="/" className="flex items-center gap-2.5">
+          <div className="flex size-7 items-center justify-center border border-primary/60 text-primary text-[11px]">
             ◈
           </div>
-          <Link
-            href="/"
-            className="text-xl font-bold tracking-wide no-underline text-foreground"
-          >
-            Rezervo
-          </Link>
+          <span className="font-bold text-[15px] tracking-tight">Rezervo</span>
+        </Link>
+
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/40 mb-6 font-medium">
+            Güvenilir Platform
+          </p>
+          <blockquote className="text-[15px] text-muted-foreground/60 leading-relaxed font-light italic">
+            "Rezervo ile randevu yönetimi artık çok daha kolay. Müşterilerimiz
+            memnun, biz de."
+          </blockquote>
+          <div className="flex items-center gap-3 mt-6">
+            <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary">
+              AK
+            </div>
+            <div>
+              <p className="text-[12px] font-semibold">Ayşe Kaya</p>
+              <p className="text-[11px] text-muted-foreground/50">
+                Güzellik Salonu Sahibi
+              </p>
+            </div>
+          </div>
         </div>
 
-        <Card>
-          {/* ── Step A: Kimlik bilgileri ──────────────────────────────────── */}
-          {step === "credentials" && (
+        <div className="flex gap-4">
+          {["10K+\nİşletme", "500K+\nRandevu", "98%\nMemnuniyet"].map(
+            (s, i) => {
+              const [val, label] = s.split("\n");
+              return (
+                <div key={i}>
+                  <p className="text-[18px] font-bold">{val}</p>
+                  <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider">
+                    {label}
+                  </p>
+                </div>
+              );
+            },
+          )}
+        </div>
+      </div>
+
+      {/* Right form panel */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-[360px]">
+          {/* Mobile logo */}
+          <Link href="/" className="flex items-center gap-2.5 mb-12 lg:hidden">
+            <div className="flex size-7 items-center justify-center border border-primary/60 text-primary text-[11px]">
+              ◈
+            </div>
+            <span className="font-bold text-[15px] tracking-tight">
+              Rezervo
+            </span>
+          </Link>
+
+          {step === "credentials" ? (
             <>
-              <CardHeader className="pb-2">
-                <p className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-3">
+              <div className="mb-8">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/50 mb-2 font-medium">
                   — Hoş Geldiniz
                 </p>
-                <h1 className="text-3xl">Giriş Yap</h1>
-                <p className="text-sm text-muted-foreground font-light">
+                <h1 className="text-[32px] font-bold tracking-[-0.02em] mb-2">
+                  Giriş Yap
+                </h1>
+                <p className="text-[13px] text-muted-foreground/60 font-light">
                   Hesabınıza erişmek için bilgilerinizi girin.
                 </p>
-              </CardHeader>
+              </div>
 
-              <CardContent className="pt-4">
-                <form
-                  onSubmit={handleCredentials}
-                  className="flex flex-col gap-5"
-                >
-                  {error && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="size-4" />
-                      <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                  )}
+              <form onSubmit={handleCredentials} className="space-y-4">
+                {error && (
+                  <Alert variant="destructive" className="py-2.5 text-[12px]">
+                    <AlertCircle className="size-3.5" />
+                    <AlertDescription className="text-[12px]">
+                      {error}
+                    </AlertDescription>
+                  </Alert>
+                )}
 
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="ornek@mail.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="password">Şifre</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full mt-1"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="size-4 mr-2 animate-spin" />
-                        Giriş yapılıyor...
-                      </>
-                    ) : (
-                      "Giriş Yap"
-                    )}
-                  </Button>
-                </form>
-
-                <div className="flex items-center gap-4 my-6">
-                  <Separator className="flex-1" />
-                  <span className="text-xs text-muted-foreground">veya</span>
-                  <Separator className="flex-1" />
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] uppercase tracking-wider text-muted-foreground/60 font-medium">
+                    Email
+                  </Label>
+                  <Input
+                    type="email"
+                    placeholder="ornek@mail.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="h-10 text-[13px] border-border/60 focus:border-primary/50"
+                  />
                 </div>
 
-                <p className="text-sm text-muted-foreground text-center font-light">
-                  Hesabınız yok mu?{" "}
-                  <Link
-                    href="/auth/register"
-                    className="text-primary font-medium no-underline hover:underline"
-                  >
-                    Kayıt Ol
-                  </Link>
-                </p>
-              </CardContent>
-            </>
-          )}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[11px] uppercase tracking-wider text-muted-foreground/60 font-medium">
+                      Şifre
+                    </Label>
+                    <Link
+                      href="/auth/forgot"
+                      className="text-[11px] text-primary/70 hover:text-primary transition-colors"
+                    >
+                      Unuttum
+                    </Link>
+                  </div>
+                  <Input
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-10 text-[13px] border-border/60 focus:border-primary/50"
+                  />
+                </div>
 
-          {/* ── Step B: TOTP kodu ─────────────────────────────────────────── */}
-          {step === "twoFactor" && (
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-10 text-[11px] uppercase tracking-[0.12em] font-semibold mt-2"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="size-3.5 mr-2 animate-spin" /> Giriş
+                      yapılıyor...
+                    </>
+                  ) : (
+                    <>
+                      Giriş Yap <ArrowUpRight className="size-3 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </form>
+
+              <div className="flex items-center gap-3 my-6">
+                <div className="flex-1 h-px bg-border/40" />
+                <span className="text-[10px] text-muted-foreground/40 uppercase tracking-wider">
+                  veya
+                </span>
+                <div className="flex-1 h-px bg-border/40" />
+              </div>
+
+              <p className="text-[12px] text-muted-foreground/50 text-center">
+                Hesabınız yok mu?{" "}
+                <Link
+                  href="/auth/register"
+                  className="text-primary font-medium hover:underline"
+                >
+                  Kayıt Ol
+                </Link>
+              </p>
+            </>
+          ) : (
             <>
-              <CardHeader className="pb-2">
+              <div className="mb-8">
                 <div className="flex items-center gap-2 mb-3">
-                  <ShieldCheck className="size-5 text-primary" />
-                  <p className="text-xs font-medium tracking-widest uppercase text-muted-foreground">
+                  <ShieldCheck className="size-4 text-primary" />
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/50 font-medium">
                     — İki Adımlı Doğrulama
                   </p>
                 </div>
-                <h1 className="text-3xl">Kodu Girin</h1>
-                <p className="text-sm text-muted-foreground font-light">
+                <h1 className="text-[32px] font-bold tracking-[-0.02em] mb-2">
+                  Kodu Girin
+                </h1>
+                <p className="text-[13px] text-muted-foreground/60 font-light">
                   Google Authenticator uygulamanızdaki 6 haneli kodu girin.
                 </p>
-              </CardHeader>
+              </div>
 
-              <CardContent className="pt-4">
-                <form
-                  onSubmit={handleTwoFactor}
-                  className="flex flex-col gap-5"
+              <form onSubmit={handleTwoFactor} className="space-y-4">
+                {error && (
+                  <Alert variant="destructive" className="py-2.5">
+                    <AlertCircle className="size-3.5" />
+                    <AlertDescription className="text-[12px]">
+                      {error}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] uppercase tracking-wider text-muted-foreground/60 font-medium">
+                    Doğrulama Kodu
+                  </Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="123 456"
+                    maxLength={7}
+                    value={code}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      setCode(
+                        raw.length > 3
+                          ? `${raw.slice(0, 3)} ${raw.slice(3)}`
+                          : raw,
+                      );
+                    }}
+                    className="h-12 text-center text-2xl tracking-[0.5em] font-mono border-border/60"
+                    autoComplete="one-time-code"
+                    required
+                  />
+                </div>
+
+                <div className="flex items-start gap-3 rounded-lg border border-border/50 p-3 bg-muted/20">
+                  <Checkbox
+                    id="remember"
+                    checked={rememberDevice}
+                    onCheckedChange={(v) => setRememberDevice(v === true)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <Label
+                      htmlFor="remember"
+                      className="cursor-pointer text-[12px] font-medium"
+                    >
+                      Bu cihaza güven
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground/50 font-light mt-0.5">
+                      30 gün boyunca tekrar kod istenmez.
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={loading || code.replace(/\s/g, "").length < 6}
+                  className="w-full h-10 text-[11px] uppercase tracking-[0.12em] font-semibold"
                 >
-                  {error && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="size-4" />
-                      <AlertDescription>{error}</AlertDescription>
-                    </Alert>
+                  {loading ? (
+                    <>
+                      <Loader2 className="size-3.5 mr-2 animate-spin" />{" "}
+                      Doğrulanıyor...
+                    </>
+                  ) : (
+                    "Doğrula"
                   )}
+                </Button>
+              </form>
 
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="code">Doğrulama Kodu</Label>
-                    <Input
-                      id="code"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="123 456"
-                      maxLength={7}
-                      value={code}
-                      onChange={(e) => {
-                        const raw = e.target.value
-                          .replace(/\D/g, "")
-                          .slice(0, 6);
-                        setCode(
-                          raw.length > 3
-                            ? `${raw.slice(0, 3)} ${raw.slice(3)}`
-                            : raw,
-                        );
-                      }}
-                      className="text-center text-xl tracking-[0.4em] font-mono"
-                      autoComplete="one-time-code"
-                      required
-                    />
-                  </div>
-
-                  {/* Cihaza güven */}
-                  <div className="flex items-start gap-3 rounded-lg border p-3 bg-muted/30">
-                    <Checkbox
-                      id="remember"
-                      checked={rememberDevice}
-                      onCheckedChange={(v) => setRememberDevice(v === true)}
-                      className="mt-0.5"
-                    />
-                    <div className="flex flex-col gap-0.5">
-                      <Label
-                        htmlFor="remember"
-                        className="cursor-pointer font-medium"
-                      >
-                        Bu cihaza güven
-                      </Label>
-                      <p className="text-xs text-muted-foreground font-light">
-                        30 gün boyunca bu cihazda tekrar kod istenmez.
-                      </p>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={loading || code.replace(/\s/g, "").length < 6}
-                    className="w-full"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="size-4 mr-2 animate-spin" />
-                        Doğrulanıyor...
-                      </>
-                    ) : (
-                      "Doğrula"
-                    )}
-                  </Button>
-                </form>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep("credentials");
-                    setError("");
-                    setCode("");
-                  }}
-                  className="flex items-center gap-1 mt-5 mx-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <ChevronLeft className="size-3" />
-                  Farklı hesapla giriş yap
-                </button>
-              </CardContent>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("credentials");
+                  setError("");
+                  setCode("");
+                }}
+                className="flex items-center gap-1 mt-5 mx-auto text-[11px] text-muted-foreground/40 hover:text-muted-foreground transition-colors uppercase tracking-wider"
+              >
+                <ChevronLeft className="size-3" />
+                Farklı hesapla giriş yap
+              </button>
             </>
           )}
-        </Card>
+        </div>
       </div>
     </div>
   );
