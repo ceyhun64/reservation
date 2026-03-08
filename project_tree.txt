@@ -7,17 +7,28 @@
 │   │   ├── AppointmentControllerTest.cs
 │   │   ├── AuthControllerTest.cs
 │   │   ├── BusinessControllerTest.cs
+│   │   ├── CategoryControllerTest.cs
+│   │   ├── FakeCacheService.cs
+│   │   ├── NotificationControllerTest.cs
+│   │   ├── ProviderControlllerTest.cs
+│   │   ├── ReviewControllerTest.cs
 │   │   ├── ServiceControllerTest.cs
-│   │   └── TestFactory.cs
+│   │   ├── TestFactory.cs
+│   │   └── TimeSlotControllerTest.cs
 │   ├── Unit
 │   │   ├── AppointmentControllerUnitTest.cs
 │   │   ├── AuthControllerUnitTest.cs
 │   │   ├── BusinessControllerUnitTest.cs
+│   │   ├── CategoryControllerUnitTest.cs
 │   │   ├── EmailServiceUnitTest.cs
 │   │   ├── NotificationServiceUnitTest.cs
-│   │   └── ServiceControllerUnitTest.cs
+│   │   ├── ProviderControllerUnitTest.cs
+│   │   ├── ReviewControllerUnitTest.cs
+│   │   ├── ServiceControllerUnitTest.cs
+│   │   └── TimeSlotControllerUnitTest.cs
 │   └── api.Tests.csproj
 ├── api
+│   ├── .dockerignore
 │   ├── .gitignore
 │   ├── Common
 │   │   └── Apiresponse.cs

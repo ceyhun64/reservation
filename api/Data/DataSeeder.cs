@@ -10,7 +10,7 @@ public static class DataSeeder
         if (await db.Users.AnyAsync())
             return;
 
-        string hash = BCrypt.Net.BCrypt.HashPassword("password");
+        string hash = BCrypt.Net.BCrypt.HashPassword("Test.123!");
 
         // ── 1. USERS ──────────────────────────────────────────────────────────
         // 3 kullanıcı: 1 Receiver, 1 Provider, 1 Admin

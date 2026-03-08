@@ -74,8 +74,8 @@ public static class TestFactory
 
     // Admin seed kullanıcısı — SeedData'daki admin bilgileriyle eşleşmeli
     // Eğer SeedData'da farklı bir admin varsa bu değerleri güncelleyin.
-    private const string AdminSeedEmail = "admin@test.com";
-    private const string AdminSeedPassword = "Admin123!";
+    private const string AdminSeedEmail = "admin@rezervo.com";
+    private const string AdminSeedPassword = "Test.123!";
 
     private static void ConfigureTestServices(IServiceCollection services, string dbName)
     {
