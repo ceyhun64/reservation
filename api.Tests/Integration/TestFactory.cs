@@ -72,6 +72,11 @@ public static class TestFactory
     private static WebApplicationFactory<Program>? _baseFactory;
     private static readonly object _lock = new();
 
+    // Admin seed kullanıcısı — SeedData'daki admin bilgileriyle eşleşmeli
+    // Eğer SeedData'da farklı bir admin varsa bu değerleri güncelleyin.
+    private const string AdminSeedEmail = "admin@test.com";
+    private const string AdminSeedPassword = "Admin123!";
+
     private static void ConfigureTestServices(IServiceCollection services, string dbName)
     {
         // ── DB: Npgsql'i tamamen çıkar, InMemory ekle ─────────────────────
@@ -150,7 +155,6 @@ public static class TestFactory
         if (dbName == null)
             return GetBaseFactory().CreateClient();
 
-        // dbName verilmişse izole DB ile yeni factory
         var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseSetting("environment", "Testing");
@@ -162,7 +166,7 @@ public static class TestFactory
 
     /// <summary>
     /// Register + login yaparak JWT token döner.
-    /// Tüm test dosyalarında ortak kullanım için.
+    /// Admin rolü için seed kullanıcısına login yapar (register denemez).
     /// </summary>
     public static async Task<string> GetTokenAsync(
         HttpClient client,
@@ -171,9 +175,17 @@ public static class TestFactory
         string password = "Test123!"
     )
     {
+        // Admin rolü register endpoint'i üzerinden atanamaz;
+        // SeedData'daki admin kullanıcısıyla direkt login yapılır.
+        if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return await LoginAsync(client, AdminSeedEmail, AdminSeedPassword);
+        }
+
+        // Diğer roller için yeni kullanıcı oluştur
         email ??= $"{Guid.NewGuid()}@test.com";
 
-        await client.PostAsJsonAsync(
+        var registerRes = await client.PostAsJsonAsync(
             "/api/auth/register",
             new
             {
@@ -185,13 +197,50 @@ public static class TestFactory
             }
         );
 
+        if (!registerRes.IsSuccessStatusCode)
+        {
+            var body = await registerRes.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(
+                $"Register başarısız (role={role}, status={registerRes.StatusCode}): {body}"
+            );
+        }
+
+        return await LoginAsync(client, email, password);
+    }
+
+    /// <summary>
+    /// Yalnızca login yaparak token döner. Kullanıcı zaten var olmalı.
+    /// </summary>
+    private static async Task<string> LoginAsync(HttpClient client, string email, string password)
+    {
         var loginRes = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
 
+        if (!loginRes.IsSuccessStatusCode)
+        {
+            var body = await loginRes.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(
+                $"Login başarısız (email={email}, status={loginRes.StatusCode}): {body}"
+            );
+        }
+
         var data = await loginRes.Content.ReadFromJsonAsync<Dictionary<string, object>>(_jsonOpts);
+
+        if (data == null || !data.ContainsKey("data"))
+        {
+            var body = await loginRes.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(
+                $"Login response'unda 'data' anahtarı bulunamadı. Response: {body}"
+            );
+        }
+
         var dataObj = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
-            data!["data"].ToString()!,
+            data["data"].ToString()!,
             _jsonOpts
         );
-        return dataObj!["token"].ToString()!;
+
+        if (dataObj == null || !dataObj.ContainsKey("token"))
+            throw new InvalidOperationException("Login response'unda 'token' bulunamadı.");
+
+        return dataObj["token"].ToString()!;
     }
 }

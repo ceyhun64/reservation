@@ -9,36 +9,8 @@ public class ReviewControllerTests
     private async Task<HttpClient> CreateAuthenticatedClient(string role = "Receiver")
     {
         var client = TestFactory.CreateClient();
-        var email = $"{Guid.NewGuid()}@test.com";
-        await client.PostAsJsonAsync(
-            "/api/auth/register",
-            new
-            {
-                fullName = "Test User",
-                email,
-                password = "Test123!",
-                phone = "5551234567",
-                role,
-            }
-        );
-        var loginRes = await client.PostAsJsonAsync(
-            "/api/auth/login",
-            new { email, password = "Test123!" }
-        );
-        // YENİ — case-insensitive
-        var opts = new System.Text.Json.JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-        };
-        var data = await loginRes.Content.ReadFromJsonAsync<Dictionary<string, object>>(opts);
-        var dataObj = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
-            data!["data"].ToString()!,
-            opts
-        );
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            dataObj!["token"].ToString()
-        );
+        var token = await TestFactory.GetTokenAsync(client, role: role);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;
     }
 
