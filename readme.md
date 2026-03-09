@@ -1,39 +1,49 @@
-# Universal Appointment System — Backend API
+# 📅 Universal Appointment System — Backend API
 
-A scalable, multi-tenant appointment management system designed for any
-industry—healthcare, beauty, education, fitness, legal services, and more.
-Built with clean architecture, JWT authentication, and PostgreSQL for data
-persistence.
+<div align="center">
+
+![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql)
+![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+
+**A scalable, multi-tenant appointment management system for any industry**
+
+[Overview](#-project-overview) • [Quick Start](#-quick-start-with-docker) • [Installation](#-manual-installation) • [API](#-api-endpoints) • [Infrastructure](#%EF%B8%8F-core-infrastructure)
+
+</div>
 
 ---
 
 ## 🚀 Project Overview
 
-The backend is an ASP.NET Core Web API that exposes endpoints for
-registering users, managing providers and businesses, booking and
-tracking appointments, and handling notifications and reviews. The API is
-fully documented using Swagger and supports role-based access control.
+A scalable, multi-tenant appointment management system designed for any industry — healthcare, beauty, education, fitness, legal services, and more. Built with clean architecture, JWT authentication, and PostgreSQL for data persistence.
 
-**Technologies & Tools**
+The backend is an **ASP.NET Core Web API** that exposes endpoints for registering users, managing providers and businesses, booking and tracking appointments, and handling notifications and reviews. The API is fully documented using Swagger and supports role-based access control.
 
-- .NET 8 (ASP.NET Core Web API)
-- Entity Framework Core with Npgsql (PostgreSQL)
-- JWT Authentication (Issuer/Audience validation, ClockSkew: zero)
-- Redis (StackExchange.Redis)
-- Swagger / OpenAPI
-- FluentValidation
-- Serilog (structured request logging)
-- xUnit & Moq for unit and integration tests
-- Docker / Docker Compose
-- Twilio (SMS notifications)
-- SendGrid (Email notifications)
-- SignalR (Real-time notifications)
-- Rate Limiting (built-in .NET 8)
-- Health Checks (PostgreSQL + Redis)
+### Technologies & Tools
+
+| Category      | Technology                                        |
+| ------------- | ------------------------------------------------- |
+| Framework     | .NET 8 (ASP.NET Core Web API)                     |
+| Database      | Entity Framework Core + Npgsql (PostgreSQL)       |
+| Auth          | JWT (Issuer/Audience validation, ClockSkew: zero) |
+| Cache         | Redis (StackExchange.Redis)                       |
+| Docs          | Swagger / OpenAPI                                 |
+| Validation    | FluentValidation                                  |
+| Logging       | Serilog (structured request logging)              |
+| Testing       | xUnit & Moq                                       |
+| DevOps        | Docker / Docker Compose                           |
+| SMS           | Twilio                                            |
+| Email         | SendGrid                                          |
+| Real-time     | SignalR                                           |
+| Rate Limiting | Built-in .NET 8                                   |
+| Health Checks | PostgreSQL + Redis                                |
 
 ---
 
-## 🏗 Architecture Diagram
+## 🏗️ Architecture Diagram
 
 ```mermaid
 flowchart TB
@@ -67,42 +77,42 @@ flowchart TB
 
 ---
 
-## 🐳 Docker ile Hızlı Başlangıç
+## 🐳 Quick Start with Docker
 
-En kolay kurulum yolu Docker Compose ile:
+The easiest way to get up and running is via Docker Compose:
 
 ```bash
-# 1. Ortam değişkenlerini ayarla
+# 1. Set up environment variables
 cp .env.example .env
-# .env dosyasını açıp DB_PASSWORD ve JWT_SECRET değerlerini doldur
+# Open .env and fill in DB_PASSWORD and JWT_SECRET
 
-# 2. Tüm servisleri ayağa kaldır (PostgreSQL + Redis + API)
+# 2. Start all services (PostgreSQL + Redis + API)
 docker compose up --build
 ```
 
-API `http://localhost:5000/swagger` adresinde çalışır.
+The API will be available at `http://localhost:5000/swagger`.
 
 ---
 
-## 🔴 Redis Kurulumu
+## 🔴 Redis Setup
 
-Redis, 2FA geçici token'ları ve oturum verisi için **zorunlu** bir bağımlılıktır. Redis çalışmadan 2FA, güvenilir cihaz yönetimi ve oturum önbellekleme özelliği çalışmaz.
+Redis is a **required** dependency for 2FA temporary tokens and session data. Without Redis, 2FA, trusted device management, and session caching will not function.
 
-### Docker ile (Önerilen)
+### Docker (Recommended)
 
 ```bash
-# İlk kurulum
+# First-time setup
 docker run -d --name redis -p 6379:6379 redis:7-alpine
 
-# Sonraki başlatmalarda
+# Start on subsequent runs
 docker start redis
 
-# Çalışıp çalışmadığını doğrula
+# Verify it's running
 docker exec redis redis-cli ping
-# Cevap: PONG
+# Expected: PONG
 ```
 
-### docker-compose.yml ile (Production-Like)
+### docker-compose.yml (Production-Like)
 
 ```yaml
 services:
@@ -122,25 +132,25 @@ services:
 docker-compose up -d
 ```
 
-### Windows — Docker olmadan
+### Windows — Without Docker
 
 ```powershell
-# winget ile
+# Via winget
 winget install Redis.Redis
 
-# Veya Chocolatey ile
+# Or via Chocolatey
 choco install redis-64
 ```
 
-Kurulumdan sonra:
+After installation:
 
 ```powershell
 redis-server
-# Yeni terminalde:
-redis-cli ping   # PONG gelmeli
+# In a new terminal:
+redis-cli ping   # Should return PONG
 ```
 
-### WSL2 üzerinden
+### Via WSL2
 
 ```bash
 sudo apt update && sudo apt install redis-server -y
@@ -148,9 +158,9 @@ sudo service redis-server start
 redis-cli ping   # PONG
 ```
 
-### Konfigürasyon
+### Configuration
 
-`appsettings.Development.json` içinde Redis bağlantı dizesi:
+Redis connection string in `appsettings.Development.json`:
 
 ```json
 "Redis": {
@@ -158,30 +168,35 @@ redis-cli ping   # PONG
 }
 ```
 
-> **Not:** `abortConnect=false` sayesinde Redis geçici olarak erişilemez olsa bile uygulama başlamaya devam eder. Ancak Redis gerektiren özellikler (2FA vb.) bu sürede çalışmaz.
+> **Note:** `abortConnect=false` allows the application to start even if Redis is temporarily unavailable. However, Redis-dependent features (2FA etc.) will not work during that period.
 
-### Redis Kullanan Özellikler
+### Redis-Backed Features
 
-| Özellik                | Cache Key             | TTL       |
-| ---------------------- | --------------------- | --------- |
-| 2FA kurulum secret'ı   | `2fa_setup:{userId}`  | 10 dakika |
-| 2FA login geçici token | `2fa_pending:{token}` | 5 dakika  |
+| Feature                 | Cache Key             | TTL        |
+| ----------------------- | --------------------- | ---------- |
+| 2FA setup secret        | `2fa_setup:{userId}`  | 10 minutes |
+| 2FA login pending token | `2fa_pending:{token}` | 5 minutes  |
 
 ---
 
-## 🛠 Manuel Kurulum
+## 🛠️ Manual Installation
 
-1. Repoyu klonla:
+1. Clone the repository:
+
    ```bash
    git clone <repo-url>
    cd api
    ```
-2. Paketleri yükle ve migration'ları uygula:
+
+2. Restore packages and apply migrations:
+
    ```bash
    dotnet restore
    dotnet ef database update
    ```
-3. **Konfigürasyon** — `appsettings.Development.json` dosyasını oluştur:
+
+3. **Configuration** — create `appsettings.Development.json`:
+
    ```json
    {
      "ConnectionStrings": {
@@ -207,11 +222,14 @@ redis-cli ping   # PONG
      }
    }
    ```
-4. Uygulamayı başlat:
+
+4. Run the application:
+
    ```bash
    dotnet run
    ```
-5. Swagger UI: `http://localhost:5000/swagger`
+
+5. Open Swagger UI at `http://localhost:5000/swagger`
 
 ---
 
@@ -226,9 +244,9 @@ redis-cli ping   # PONG
 
 ---
 
-## 📚 API Endpoints (Selected)
+## 📚 API Endpoints
 
-Below is a high-level summary; use Swagger for full details.
+Use Swagger for the full endpoint list. A high-level summary is provided below.
 
 ### Authentication
 
@@ -242,46 +260,85 @@ Below is a high-level summary; use Swagger for full details.
 | Method | Endpoint               | Description             |
 | ------ | ---------------------- | ----------------------- |
 | GET    | `/api/categories`      | Get full category tree  |
-| GET    | `/api/categories/{id}` | Get category by id      |
+| GET    | `/api/categories/{id}` | Get category by ID      |
 | POST   | `/api/categories`      | Create category (Admin) |
 
 ### Businesses
 
 | Method | Endpoint               | Description                |
 | ------ | ---------------------- | -------------------------- |
-| GET    | `/api/businesses`      | Search & filter            |
-| GET    | `/api/businesses/{id}` | Get details                |
+| GET    | `/api/businesses`      | Search & filter businesses |
+| GET    | `/api/businesses/{id}` | Get business details       |
 | POST   | `/api/businesses`      | Create business (Provider) |
 | PUT    | `/api/businesses/{id}` | Update business            |
-| DELETE | `/api/businesses/{id}` | Soft delete                |
+| DELETE | `/api/businesses/{id}` | Soft delete business       |
 
-_(Full endpoint list available in Swagger UI.)_
+### Services
+
+| Method | Endpoint             | Description    |
+| ------ | -------------------- | -------------- |
+| GET    | `/api/services`      | List services  |
+| POST   | `/api/services`      | Create service |
+| PUT    | `/api/services/{id}` | Update service |
+| DELETE | `/api/services/{id}` | Delete service |
+
+### Time Slots
+
+| Method | Endpoint                            | Description               |
+| ------ | ----------------------------------- | ------------------------- |
+| GET    | `/api/timeslots/provider/{id}`      | Get provider's time slots |
+| POST   | `/api/timeslots/provider/{id}/bulk` | Bulk create time slots    |
+| DELETE | `/api/timeslots/{id}`               | Delete time slot          |
+
+### Appointments
+
+| Method | Endpoint                        | Description               |
+| ------ | ------------------------------- | ------------------------- |
+| GET    | `/api/appointments`             | List appointments         |
+| POST   | `/api/appointments`             | Book appointment          |
+| GET    | `/api/appointments/{id}`        | Get appointment details   |
+| PATCH  | `/api/appointments/{id}/status` | Update appointment status |
+| DELETE | `/api/appointments/{id}`        | Cancel appointment        |
+
+### Reviews
+
+| Method | Endpoint                     | Description                 |
+| ------ | ---------------------------- | --------------------------- |
+| GET    | `/api/reviews/provider/{id}` | Get provider reviews        |
+| POST   | `/api/reviews`               | Submit review               |
+| DELETE | `/api/reviews/{id}`          | Delete review (Admin/Owner) |
 
 ---
 
 ## ⚙️ Core Infrastructure
 
-- **Repository & Unit‑of‑Work Pattern**: `IRepository`, `UnitOfWork` ve concrete implementasyonlar database erişimini soyutlar, test edilebilirliği artırır.
-- **Global Exception Middleware**: `GlobalExceptionMiddleware.cs` tüm unhandled exception'ları yakalar ve tutarlı `ApiResponse` nesneleri döner.
-- **FluentValidation**: `Validators/` klasöründeki validator'lar (ör. `AuthValidator`, `ServiceValidator`) ile DTO'lar validate edilir.
-- **Redis Cache**: `ICacheService` / `RedisCacheService` ile önbellekleme; `CacheKeys` helper'ı ile merkezi key yönetimi.
-- **Serilog**: Her HTTP isteği için `{Method} {Path} → {StatusCode} ({Elapsed}ms)` formatında yapılandırılmış request loglama. Console ve dosya sink'leri desteklenir.
-- **Data Seeding**: `DataSeeder.cs` uygulama başlarken örnek kullanıcı, provider, business, servis ve kategori verilerini yükler.
-- **JSON Serialization**: Dairesel referans döngüleri (`ReferenceHandler.IgnoreCycles`), null alanlar (`WhenWritingNull`) ve enum'lar string olarak serialize edilir (`JsonStringEnumConverter`).
+**Repository & Unit-of-Work Pattern** — `IRepository`, `UnitOfWork`, and concrete implementations abstract database access and improve testability.
+
+**Global Exception Middleware** — `GlobalExceptionMiddleware.cs` catches all unhandled exceptions and returns consistent `ApiResponse` objects.
+
+**FluentValidation** — DTOs are validated via validators in the `Validators/` folder (e.g., `AuthValidator`, `ServiceValidator`).
+
+**Redis Cache** — Caching via `ICacheService` / `RedisCacheService` with centralized key management through the `CacheKeys` helper.
+
+**Serilog** — Structured request logging in `{Method} {Path} → {StatusCode} ({Elapsed}ms)` format. Console and file sinks are supported.
+
+**Data Seeding** — `DataSeeder.cs` automatically loads sample users, providers, businesses, services, and categories on application startup.
+
+**JSON Serialization** — Circular reference cycles (`ReferenceHandler.IgnoreCycles`), null fields (`WhenWritingNull`), and enums are serialized as strings (`JsonStringEnumConverter`).
 
 ---
 
 ## 🛡️ Rate Limiting
 
-Kötüye kullanımı önlemek ve API kararlılığını korumak için .NET 8 built-in rate limiter kullanılmaktadır. Limit aşıldığında `429 Too Many Requests` döner.
+The .NET 8 built-in rate limiter is used to prevent abuse and maintain API stability. Returns `429 Too Many Requests` when the limit is exceeded.
 
-| Policy  | Uygulandığı yer    | Limit             | Amaç                       |
-| ------- | ------------------ | ----------------- | -------------------------- |
-| `fixed` | Tüm controller'lar | 60 istek / dakika | Genel API koruması         |
-| `auth`  | `/api/auth/*`      | 10 istek / dakika | Brute-force login koruması |
+| Policy  | Applied To      | Limit                | Purpose                      |
+| ------- | --------------- | -------------------- | ---------------------------- |
+| `fixed` | All controllers | 60 requests / minute | General API protection       |
+| `auth`  | `/api/auth/*`   | 10 requests / minute | Brute-force login protection |
 
 ```csharp
-// Auth endpoint'lerine özel policy uygulamak için:
+// Apply a specific policy to an auth endpoint:
 [EnableRateLimiting("auth")]
 [HttpPost("login")]
 public async Task<IActionResult> Login(...) { }
@@ -291,20 +348,20 @@ public async Task<IActionResult> Login(...) { }
 
 ## 🏥 Health Checks
 
-Uygulamanın ve bağımlı servislerinin durumu `/health` endpoint'i üzerinden izlenebilir. Kubernetes liveness/readiness probe'ları ve load balancer'lar bu endpoint'i kullanır.
+The health status of the application and its dependencies can be monitored via the `/health` endpoint. Used by Kubernetes liveness/readiness probes and load balancers.
 
 ```
 GET /health
 ```
 
-**Kontrol edilen servisler:**
+**Services checked:**
 
-| Servis     | Kontrol Yöntemi         |
-| ---------- | ----------------------- |
-| PostgreSQL | Test sorgusu (`NpgSql`) |
-| Redis      | Ping (`StackExchange`)  |
+| Service    | Check Method         |
+| ---------- | -------------------- |
+| PostgreSQL | Test query (NpgSql)  |
+| Redis      | Ping (StackExchange) |
 
-**Örnek yanıt:**
+**Example response:**
 
 ```json
 {
@@ -320,14 +377,14 @@ GET /health
 
 ## 📡 Real-Time Notifications — SignalR
 
-Kullanıcılara anlık bildirim göndermek için ASP.NET Core SignalR kullanılmaktadır.
+ASP.NET Core SignalR is used to deliver instant notifications to users.
 
-### Nasıl Çalışır?
+### How It Works
 
-Kullanıcı giriş yaptıktan sonra frontend, JWT token ile SignalR hub'a WebSocket bağlantısı açar. Sunucu tarafında bir işlem gerçekleştiğinde (randevu oluşturma, onaylama, iptal vb.) `INotificationService` üzerinden ilgili kullanıcıya anlık bildirim iletilir.
+After login, the frontend opens a WebSocket connection to the SignalR hub using a JWT token. When a server-side event occurs (appointment created, confirmed, cancelled, etc.), `INotificationService` delivers the notification to the relevant user in real time.
 
 ```
-Frontend  ──WebSocket──►  /hubs/notifications  ──►  NotificationService  ──►  Kullanıcı
+Frontend  ──WebSocket──►  /hubs/notifications  ──►  NotificationService  ──►  User
 ```
 
 ### Hub Endpoint
@@ -336,7 +393,7 @@ Frontend  ──WebSocket──►  /hubs/notifications  ──►  Notification
 ws://localhost:5000/hubs/notifications
 ```
 
-WebSocket başlık taşıyamadığı için JWT token query string üzerinden iletilir; bu davranış `JwtBearerEvents.OnMessageReceived` ile handle edilmiştir:
+Since WebSockets cannot carry headers, the JWT token is passed via query string. This is handled by `JwtBearerEvents.OnMessageReceived`:
 
 ```javascript
 const connection = new HubConnectionBuilder()
@@ -353,24 +410,24 @@ connection.on("ReceiveNotification", (notification) => {
 await connection.start();
 ```
 
-### SignalR Ayarları
+### SignalR Settings
 
-| Ayar                    | Değer    | Açıklama                         |
-| ----------------------- | -------- | -------------------------------- |
-| `KeepAliveInterval`     | 15 sn    | Bağlantı canlı tutma ping süresi |
-| `ClientTimeoutInterval` | 30 sn    | Cevap gelmezse bağlantı kesilir  |
-| `EnableDetailedErrors`  | Dev only | Production'da kapalı             |
+| Setting                 | Value    | Description                         |
+| ----------------------- | -------- | ----------------------------------- |
+| `KeepAliveInterval`     | 15s      | Connection keep-alive ping interval |
+| `ClientTimeoutInterval` | 30s      | Disconnect if no response received  |
+| `EnableDetailedErrors`  | Dev only | Disabled in production              |
 
-### Tetiklenen Olaylar
+### Triggered Events
 
-| Olay                     | Alıcı               | Açıklama                                     |
-| ------------------------ | ------------------- | -------------------------------------------- |
-| Randevu oluşturuldu      | Receiver + Provider | Her iki tarafa ayrı bildirim gönderilir      |
-| Durum değişti (onay/red) | Receiver            | Provider aksiyonu sonrası tetiklenir         |
-| Müşteri iptal etti       | Provider            | Receiver iptal ettiğinde provider bildirilir |
-| Randevu tamamlandı       | Receiver            | Değerlendirme yapması için yönlendirilir     |
+| Event                           | Recipient           | Description                        |
+| ------------------------------- | ------------------- | ---------------------------------- |
+| Appointment created             | Receiver + Provider | Both parties notified separately   |
+| Status changed (confirm/reject) | Receiver            | Triggered after provider action    |
+| Customer cancelled              | Provider            | Provider notified on cancellation  |
+| Appointment completed           | Receiver            | Prompts receiver to leave a review |
 
-> **Not:** Birden fazla sunucu örneği (horizontal scaling) çalıştırılıyorsa SignalR backplane olarak Redis kullanılmalıdır:
+> **Note:** If running multiple server instances (horizontal scaling), use Redis as the SignalR backplane:
 >
 > ```csharp
 > builder.Services.AddSignalR().AddStackExchangeRedis("localhost:6379");
@@ -380,47 +437,47 @@ await connection.start();
 
 ## ⏰ Reminder Background Service
 
-`ReminderBackgroundService`, uygulama başladığında otomatik olarak çalışan bir `IHostedService` implementasyonudur. Yaklaşan randevular için kullanıcılara SMS hatırlatması gönderir.
+`ReminderBackgroundService` is an `IHostedService` implementation that starts automatically when the application launches. It sends SMS reminders to users for upcoming appointments.
 
-- Arka planda periyodik olarak çalışır; herhangi bir HTTP isteği gerektirmez.
-- `ISmsService.SendAppointmentReminderAsync(...)` metodunu kullanır.
-- Uygulama kapanırken `CancellationToken` ile düzgün şekilde sonlandırılır (graceful shutdown).
+- Runs periodically in the background with no HTTP request required.
+- Uses `ISmsService.SendAppointmentReminderAsync(...)`.
+- Gracefully shuts down via `CancellationToken` when the application stops.
 
 ---
 
 ## 🌐 CORS
 
-SignalR WebSocket bağlantısı `credentials` gerektirdiğinden `AllowCredentials()` zorunludur. Wildcard origin (`*`) ile `AllowCredentials()` birlikte kullanılamaz; bu nedenle izin verilen origin'ler açıkça belirtilmiştir.
+Since SignalR WebSocket connections require credentials, `AllowCredentials()` is mandatory. Wildcard origins (`*`) cannot be used with `AllowCredentials()`, so allowed origins are explicitly declared.
 
 ```
-İzin verilen origin'ler:
+Allowed origins:
   http://localhost:3000   (Next.js dev)
-  http://localhost:5191   (alternatif dev port)
+  http://localhost:5191   (alternative dev port)
 ```
 
-> Production'da bu değerler environment variable üzerinden yapılandırılmalıdır.
+> In production, these values should be configured via environment variables.
 
 ---
 
 ## 📧 Email Notifications — SendGrid
 
-Randevu işlemlerinde kullanıcılara otomatik e-posta gönderimi için **SendGrid** entegrasyonu kullanılmaktadır.
+**SendGrid** is used for automated email delivery on appointment events.
 
-### Kurulum
+### Installation
 
 ```bash
 dotnet add package SendGrid
 ```
 
-### Gönderilen E-postalar
+### Emails Sent
 
-| Durum               | Alıcı               | İçerik                              |
-| ------------------- | ------------------- | ----------------------------------- |
-| Randevu oluşturuldu | Receiver + Provider | Randevu detayları ve bekleme durumu |
-| Durum değişti       | Receiver            | Onay / red / tamamlandı bilgisi     |
-| Müşteri iptal etti  | Provider            | Müşteri adı ve iptal nedeni         |
+| Event               | Recipient           | Content                                      |
+| ------------------- | ------------------- | -------------------------------------------- |
+| Appointment created | Receiver + Provider | Appointment details and pending status       |
+| Status changed      | Receiver            | Confirmation / rejection / completion notice |
+| Customer cancelled  | Provider            | Customer name and cancellation reason        |
 
-### Servis Arayüzü
+### Service Interface
 
 ```csharp
 public interface IEmailService
@@ -432,58 +489,43 @@ public interface IEmailService
 
 ### SendGrid Dashboard
 
-1. [sendgrid.com](https://sendgrid.com) → **Settings → API Keys → Create API Key**
-2. İzin: **Mail Send (Full Access)**
-3. **Sender Authentication**: Gönderici domain veya tek adres doğrulaması yapılmalıdır, aksi halde e-postalar spam klasörüne düşer.
+1. Go to [sendgrid.com](https://sendgrid.com) → **Settings → API Keys → Create API Key**
+2. Permission: **Mail Send (Full Access)**
+3. Complete **Sender Authentication** (domain or single address verification), otherwise emails may land in spam.
 
-> **Not:** SendGrid'in ücretsiz planı günlük **100 e-posta** limitine sahiptir. Production ortamı için ücretli plana geçilmesi önerilir.
+> **Note:** SendGrid's free plan allows **100 emails per day**. A paid plan is recommended for production.
 
 ---
 
 ## 📱 SMS Notifications — Twilio
 
-Randevu işlemlerinde kullanıcılara SMS gönderimi için **Twilio** entegrasyonu kullanılmaktadır.
+**Twilio** is used for SMS delivery on appointment events.
 
-### Kurulum
+### Installation
 
 ```bash
 dotnet add package Twilio
 ```
 
-### Gönderilen SMS'ler
+### SMS Messages Sent
 
-| Durum               | Alıcı    | Örnek İçerik                                                                                |
-| ------------------- | -------- | ------------------------------------------------------------------------------------------- |
-| Randevu oluşturuldu | Receiver | `Merhaba Ali, Prestige Barber Studio icin 07.03.2026 12:00 tarihli randevunuz olusturuldu.` |
-| Durum değişti       | Receiver | `...randevunuz onaylandi / reddedildi / tamamlandi.`                                        |
-| İptal edildi        | Receiver | `...randevunuz iptal edildi.`                                                               |
-| Hatırlatma          | Receiver | `Hatirlatma: 07.03.2026 12:00 tarihinde ... randevunuz var.`                                |
+| Event                 | Recipient | Example Content                                                                                  |
+| --------------------- | --------- | ------------------------------------------------------------------------------------------------ |
+| Appointment created   | Receiver  | `Hello Ali, your appointment at Prestige Barber Studio on 07.03.2026 at 12:00 has been created.` |
+| Status changed        | Receiver  | `...your appointment has been confirmed / rejected / completed.`                                 |
+| Appointment cancelled | Receiver  | `...your appointment has been cancelled.`                                                        |
+| Reminder              | Receiver  | `Reminder: You have an appointment on 07.03.2026 at 12:00.`                                      |
 
-### Türkçe Karakter Uyumluluğu
+### Twilio Account Notes
 
-GSM 7-bit SMS standardı Türkçe karakterleri desteklemez; gönderimde bozulurlar (örn. `Ü` → `^`). `SmsService` içindeki `N()` yardımcı metodu tüm metni otomatik ASCII'ye normalize eder:
+| Feature                | Trial Account                           | Paid Account                         |
+| ---------------------- | --------------------------------------- | ------------------------------------ |
+| Message prefix         | `Sent from your Twilio trial account -` | None                                 |
+| Alphanumeric Sender ID | ❌ Not supported                        | ✅ Registration required per country |
+| Sending restriction    | Verified numbers only                   | All numbers                          |
+| Estimated SMS cost     | —                                       | ~$0.05 / SMS                         |
 
-```csharp
-private static string N(string text) =>
-    text
-        .Replace('ç', 'c').Replace('Ç', 'C')
-        .Replace('ğ', 'g').Replace('Ğ', 'G')
-        .Replace('ı', 'i').Replace('İ', 'I')
-        .Replace('ö', 'o').Replace('Ö', 'O')
-        .Replace('ş', 's').Replace('Ş', 'S')
-        .Replace('ü', 'u').Replace('Ü', 'U');
-```
-
-### Twilio Hesap Notları
-
-| Özellik                | Trial Hesap                             | Ücretli Hesap                |
-| ---------------------- | --------------------------------------- | ---------------------------- |
-| Mesaj öneki            | `Sent from your Twilio trial account -` | Yok                          |
-| Alphanumeric Sender ID | ❌ Desteklenmiyor                       | ✅ Ülkeye göre kayıt gerekir |
-| Gönderim kısıtlaması   | Yalnızca doğrulanmış numaralar          | Tüm numaralar                |
-| Türkiye SMS fiyatı     | —                                       | ~$0.05 / SMS                 |
-
-> **Not:** SMS hatası uygulamayı durdurmaz; hatalar yalnızca loglanır. Telefon numarası olmayan kullanıcılara SMS gönderimi otomatik olarak atlanır.
+> **Note:** SMS errors do not crash the application — they are logged only. Users without a phone number are automatically skipped.
 
 ---
 
@@ -495,15 +537,15 @@ private static string N(string text) =>
 4. Provider sets availability → `POST /api/timeslots/provider/{id}/bulk`
 5. Receiver registers → `POST /api/auth/register` (role=Receiver)
 6. Receiver books appointment → `POST /api/appointments`
-   - ✉️ E-posta gönderilir (Receiver + Provider)
-   - 📱 SMS gönderilir (Receiver)
-   - 📡 SignalR bildirimi iletilir (Receiver + Provider)
+   - ✉️ Email sent (Receiver + Provider)
+   - 📱 SMS sent (Receiver)
+   - 📡 SignalR notification delivered (Receiver + Provider)
 7. Provider confirms → `PATCH /api/appointments/{id}/status`
-   - ✉️ Durum e-postası gönderilir
-   - 📱 Durum SMS'i gönderilir
-   - 📡 Anlık bildirim iletilir
+   - ✉️ Status email sent
+   - 📱 Status SMS sent
+   - 📡 Real-time notification delivered
 8. After completion, receiver reviews provider
-   - ⏰ ReminderBackgroundService randevu öncesi otomatik SMS hatırlatması gönderir
+   - ⏰ ReminderBackgroundService sends automatic SMS reminder before the appointment
 
 ---
 
@@ -511,10 +553,10 @@ private static string N(string text) =>
 
 A companion Next.js application lives in the `web` directory.
 
-**Features:**
+### Features
 
 - User registration & login (JWT stored in HttpOnly cookies)
-- Role-based dashboards (receiver, provider, admin)
+- Role-based dashboards (Receiver, Provider, Admin)
 - Business/service discovery and search
 - Calendar view for time slot selection
 - Appointment booking and management
@@ -522,13 +564,15 @@ A companion Next.js application lives in the `web` directory.
 - Review writing and moderation
 - Real-time notifications via SignalR (`use-signalr.ts`)
 
-**Frontend Tech Stack:**
+### Frontend Tech Stack
 
-- Next.js 14 (App Router)
-- TypeScript
-- Tailwind CSS
-- React Query / SWR
-- `@microsoft/signalr`
+| Technology              | Description          |
+| ----------------------- | -------------------- |
+| Next.js 14 (App Router) | React framework      |
+| TypeScript              | Type safety          |
+| Tailwind CSS            | Styling              |
+| React Query / SWR       | Data fetching        |
+| @microsoft/signalr      | Real-time connection |
 
 ```bash
 cd web
@@ -537,13 +581,13 @@ npm run dev
 # http://localhost:3000
 ```
 
-Backend URL `.env.local` ile yapılandırılır (varsayılan: `http://localhost:5000`).
+The backend URL is configured via `.env.local` (default: `http://localhost:5000`).
 
 ---
 
 ## 🎯 Seed Data
 
-Uygulama başlarken aşağıdaki kategoriler otomatik yüklenir:
+The following categories are automatically loaded on application startup:
 
 - **Health** (Clinic, Dental, Psychology, Physiotherapy)
 - **Beauty** (Hairdresser, Makeup, Nail Art)
@@ -552,7 +596,7 @@ Uygulama başlarken aşağıdaki kategoriler otomatik yüklenir:
 - **Education**
 - **Legal & Consulting**
 
-> **Not:** Development ortamında uygulama her başladığında veritabanı sıfırlanır (`EnsureDeleted` + `Migrate`). Production'da yalnızca `Migrate` çalışır, mevcut veriler korunur.
+> **Note:** In the development environment, the database is reset on each startup (`EnsureDeleted` + `Migrate`). In production, only `Migrate` runs — existing data is preserved.
 
 ---
 
@@ -563,29 +607,48 @@ cd api.Tests
 dotnet test
 ```
 
-- **Unit testler**: Controller ve servis katmanları Moq ile izole test edilir.
-- **Integration testler**: `TestFactory` ile gerçek HTTP istekleri test edilir.
-- Coverage raporu için `coverlet` kullanılabilir.
+- **Unit tests** — Controller and service layers are tested in isolation using Moq.
+- **Integration tests** — Real HTTP requests are tested via `TestFactory`.
+- Use `coverlet` for coverage reports.
 
 ### CI Integration
 
-`.github/workflows/ci.yml` ile her push'ta build, test ve kısa ömürlü Redis container ile integration testler otomatik çalışır.
+`.github/workflows/ci.yml` automatically runs build, test, and integration tests with a short-lived Redis container on every push.
 
 ---
 
 ## 🚀 Deployment
 
-Docker Compose ile tüm servisler (PostgreSQL + Redis + API) tek komutla ayağa kalkar. Alternatif olarak Azure App Service, AWS Elastic Beanstalk gibi cloud platformlarına doğrudan deploy edilebilir.
+Docker Compose brings up all services (PostgreSQL + Redis + API) with a single command. Alternatively, the API can be deployed directly to cloud platforms such as Azure App Service or AWS Elastic Beanstalk.
 
 **Production checklist:**
 
-- `appsettings.json` içindeki tüm secret'ları environment variable'a taşı
-- CORS origin listesini production domain'leriyle güncelle
-- `EnsureDeleted` kodunun `IsDevelopment()` guard'ı içinde kaldığını doğrula
-- SignalR için Redis backplane ekle (horizontal scaling durumunda)
+- Move all secrets from `appsettings.json` to environment variables
+- Update the CORS origin list with production domains
+- Verify `EnsureDeleted` is guarded inside `IsDevelopment()`
+- Add Redis backplane for SignalR if horizontal scaling is needed
+
+---
+
+## 🤝 Contributing
+
+1. **Fork** this repository
+2. Create a feature branch:
+   ```bash
+   git checkout -b feature/AmazingFeature
+   ```
+3. Commit your changes:
+   ```bash
+   git commit -m 'feat: add AmazingFeature'
+   ```
+4. Push your branch:
+   ```bash
+   git push origin feature/AmazingFeature
+   ```
+5. Open a **Pull Request**
 
 ---
 
 ## 📄 License
 
-MIT License.
+This project is licensed under the **MIT License**.
